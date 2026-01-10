@@ -8,34 +8,345 @@ if (!user) {
 }
 ---
 
-<Layout title="ダッシュボード">
-  <div style="padding: 2rem 0;">
-    <h1 style="font-size: 2rem; margin-bottom: 1rem;">
-      ようこそ、{user.username} さん
-    </h1>
-    <p style="color: #666; margin-bottom: 2rem;">
-      ギルド一覧は現在実装中ですわ。Phase 3 で完成予定です。
+<Layout title="ダッシュボード - サーバー一覧">
+  <div class="dashboard-container">
+    <h1 class="page-title">サーバー一覧</h1>
+    <p class="page-description">
+      管理権限を持つサーバーの設定を変更できますわ。
     </p>
     
-    <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2 style="margin-bottom: 1rem;">Phase 1 完了項目</h2>
-      <ul style="list-style: disc; padding-left: 2rem; line-height: 2;">
-        <li>✅ Dashboard ディレクトリ構成作成</li>
-        <li>✅ Astro + Preact 環境構築</li>
-        <li>✅ SQLite + Drizzle ORM セットアップ</li>
-        <li>✅ Discord OAuth2 認証実装（lucia-auth）</li>
-        <li>✅ CSRF トークン + Cookie 属性設定</li>
-        <li>✅ P0対応: ENCRYPTION_SALT 必須化</li>
-        <li>✅ P0対応: レート制限 Lua 原子化</li>
-        <li>✅ Redis 再シード処理実装</li>
-      </ul>
-      
-      <h2 style="margin-top: 2rem; margin-bottom: 1rem;">次のステップ (Phase 2)</h2>
-      <ul style="list-style: disc; padding-left: 2rem; line-height: 2;">
-        <li>Bot 側の IChannelConfigRepository 実装</li>
-        <li>RedisChannelConfigRepository（LRU キャッシュ + pub/sub）</li>
-        <li>MessageHandler への統合</li>
-      </ul>
+    <div id="guilds-list-container">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>サーバー一覧を読み込み中...</p>
+      </div>
     </div>
   </div>
+
+  <style>
+    .dashboard-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    .page-title {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+    }
+
+    .page-description {
+      color: #666;
+      margin-bottom: 2rem;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      color: #666;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #5865f2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .guilds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .guild-card {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .guild-card:hover {
+      border-color: #5865f2;
+      box-shadow: 0 4px 12px rgba(88, 101, 242, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .guild-card.not-joined {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #f9f9f9;
+    }
+
+    .guild-card.not-joined:hover {
+      border-color: #e0e0e0;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .guild-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .guild-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #5865f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .guild-icon img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .guild-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .guild-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 0.25rem;
+      word-break: break-word;
+    }
+
+    .guild-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.joined {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.not-joined {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-dot.joined {
+      background: #28a745;
+    }
+
+    .status-dot.not-joined {
+      background: #dc3545;
+    }
+
+    .error-message {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 8px;
+      padding: 1.5rem;
+      color: #721c24;
+      text-align: center;
+    }
+
+    .error-message h3 {
+      margin-bottom: 0.5rem;
+    }
+
+    .retry-button {
+      margin-top: 1rem;
+      padding: 0.5rem 1.5rem;
+      background: #5865f2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .retry-button:hover {
+      background: #4752c4;
+    }
+
+    .no-guilds {
+      text-align: center;
+      padding: 3rem 2rem;
+      background: white;
+      border-radius: 12px;
+      border: 2px dashed #e0e0e0;
+    }
+
+    .no-guilds h3 {
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+    }
+
+    .no-guilds p {
+      color: #666;
+    }
+  </style>
+
+  <script>
+    interface Guild {
+      id: string;
+      name: string;
+      icon: string | null;
+      botJoined: boolean;
+    }
+
+    async function loadGuilds() {
+      const container = document.getElementById('guilds-list-container');
+      if (!container) return;
+
+      try {
+        const response = await fetch('/api/guilds');
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            // セッション期限切れ - リダイレクト
+            window.location.href = '/auth/session-expired?message=' + encodeURIComponent('セッションの有効期限が切れました。再度ログインしてくださいませ。');
+            return;
+          }
+          if (response.status === 429) {
+            const error = await response.json();
+            const retryAfter = response.headers.get('Retry-After');
+            showError('レート制限に達しました', `リクエストが多すぎますわ。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しくださいませ。`);
+            return;
+          }
+          throw new Error('Failed to fetch guilds');
+        }
+
+        const data = await response.json();
+        const guilds: Guild[] = data.data?.guilds || data.guilds || [];
+
+        if (guilds.length === 0) {
+          container.innerHTML = `
+            <div class="no-guilds">
+              <h3>管理可能なサーバーがありません</h3>
+              <p>サーバーの管理権限が必要ですわ。</p>
+            </div>
+          `;
+          return;
+        }
+
+        const guildsGrid = document.createElement('div');
+        guildsGrid.className = 'guilds-grid';
+
+        guilds.forEach(guild => {
+          const card = createGuildCard(guild);
+          guildsGrid.appendChild(card);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(guildsGrid);
+      } catch (err) {
+        console.error('Failed to load guilds:', err);
+        showError('サーバー一覧の取得に失敗しました', 'もう一度お試しくださいませ。');
+      }
+    }
+
+    function createGuildCard(guild: Guild): HTMLElement {
+      const card = document.createElement('a');
+      card.className = `guild-card ${!guild.botJoined ? 'not-joined' : ''}`;
+      
+      if (guild.botJoined) {
+        card.href = `/dashboard/guilds/${guild.id}`;
+      } else {
+        card.onclick = (e) => {
+          e.preventDefault();
+          alert('Bot がこのサーバーに参加していません。先に Bot を招待してくださいませ。');
+        };
+      }
+
+      const iconUrl = guild.icon 
+        ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`
+        : null;
+
+      const firstLetter = guild.name.charAt(0).toUpperCase();
+
+      card.innerHTML = `
+        <div class="guild-header">
+          <div class="guild-icon">
+            ${iconUrl ? `<img src="${iconUrl}" alt="${guild.name}">` : firstLetter}
+          </div>
+          <div class="guild-info">
+            <div class="guild-name">${escapeHtml(guild.name)}</div>
+            <div class="guild-status">
+              <span class="status-badge ${guild.botJoined ? 'joined' : 'not-joined'}">
+                <span class="status-dot ${guild.botJoined ? 'joined' : 'not-joined'}"></span>
+                ${guild.botJoined ? 'Bot 参加済み' : 'Bot 未参加'}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      return card;
+    }
+
+    function showError(title: string, message: string, showReload: boolean = false) {
+      const container = document.getElementById('guilds-list-container');
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="error-message">
+          <h3>${escapeHtml(title)}</h3>
+          <p>${escapeHtml(message)}</p>
+          ${showReload ? '<button class="retry-button" onclick="window.location.href=\'/auth/login\'">再ログイン</button>' : '<button class="retry-button" onclick="location.reload()">再試行</button>'}
+        </div>
+      `;
+    }
+
+    function escapeHtml(text: string): string {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ページ読み込み時に実行
+    loadGuilds();
+  </script>
 </Layout>
