@@ -1,4 +1,4 @@
-import { encodeBase32LowerCaseNoPadding } from "oslo/encoding";
+import { base32 } from "oslo/encoding";
 import { redis } from "./redis";
 
 // セッション有効期限: 7日間
@@ -19,12 +19,12 @@ export interface User {
 }
 
 /**
- * セッションIDを生成（Oslo の generateIdFromEntropySize 相当）
+ * セッションIDを生成（Oslo の base32 encoding を使用）
  */
 export function generateSessionId(): string {
   const bytes = new Uint8Array(20); // 160 bits
   crypto.getRandomValues(bytes);
-  return encodeBase32LowerCaseNoPadding(bytes);
+  return base32.encode(bytes);
 }
 
 /**

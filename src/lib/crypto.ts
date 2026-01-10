@@ -34,7 +34,8 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
 
 // SESSION_SECRET から暗号化鍵を派生
 function deriveKey(secret: string): Buffer {
-  return scryptSync(secret, ENCRYPTION_SALT, 32);
+  // ENCRYPTION_SALT は起動時チェック済みなので、ここでは非 null を保証
+  return scryptSync(secret, ENCRYPTION_SALT!, 32);
 }
 
 export function encryptToken(token: string, secret: string = SESSION_SECRET): string {

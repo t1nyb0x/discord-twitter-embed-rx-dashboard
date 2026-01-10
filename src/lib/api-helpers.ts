@@ -72,7 +72,7 @@ export function createRateLimitError(resetAt: number): Response {
  * P1対応: 404 Not Found エラーを作成
  * Bot が参加していない、またはオフラインの場合に使用
  */
-export function createNotFoundError(message: string = "リソースが見つかりませんでしたわ"): Response {
+export function createNotFoundError(message: string = "リソースが見つかりませんでした"): Response {
   return new Response(
     JSON.stringify({
       success: false,
@@ -100,7 +100,7 @@ export function createBotNotJoinedError(): Response {
       success: false,
       error: {
         code: "BOT_NOT_JOINED_OR_OFFLINE",
-        message: "Bot がこのギルドに参加していないか、オフラインですわ",
+        message: "Bot がこのギルドに参加していないか、オフラインです",
       },
     } as ApiError),
     {

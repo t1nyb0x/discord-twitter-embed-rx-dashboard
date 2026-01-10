@@ -23,7 +23,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
         success: false,
         error: {
           code: "RATE_LIMIT_EXCEEDED",
-          message: "リクエストが多すぎますわ。しばらくお待ちくださいませ。",
+          message: "リクエストが多すぎます。しばらくお待ちください。",
         },
       }),
       {
@@ -102,7 +102,7 @@ export const POST: APIRoute = async ({ params, locals }) => {
         success: false,
         error: {
           code: "RATE_LIMIT_EXCEEDED",
-          message: "再取得リクエストが多すぎますわ。少しお待ちくださいませ。",
+          message: "再取得リクエストが多すぎます。少しお待ちください。",
         },
       }),
       {

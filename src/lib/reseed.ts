@@ -181,12 +181,13 @@ export async function reconcileConfigs(joinedGuildIds: string[]): Promise<void> 
 
         await redis.set(key, JSON.stringify(defaultConfig));
 
-        // SQLite にも保存
+        // SQLite にも保存（システムによる自動作成）
         await db.insert(guildConfigs).values({
           guildId,
           allowAllChannels: true,
           version: 1,
           updatedAt: new Date().toISOString(),
+          updatedBy: "system", // 自動作成時はシステムユーザー
         });
 
         console.log(`[Reconcile] Created default config for new guild ${guildId}`);

@@ -12,7 +12,7 @@ if (!user) {
   <div class="dashboard-container">
     <h1 class="page-title">サーバー一覧</h1>
     <p class="page-description">
-      管理権限を持つサーバーの設定を変更できますわ。
+      管理権限を持つサーバーの設定を変更できます。
     </p>
     
     <div id="guilds-list-container">
@@ -247,13 +247,13 @@ if (!user) {
         if (!response.ok) {
           if (response.status === 401) {
             // セッション期限切れ - リダイレクト
-            window.location.href = '/auth/session-expired?message=' + encodeURIComponent('セッションの有効期限が切れました。再度ログインしてくださいませ。');
+            window.location.href = '/auth/session-expired?message=' + encodeURIComponent('セッションの有効期限が切れました。再度ログインしてください。');
             return;
           }
           if (response.status === 429) {
             const error = await response.json();
             const retryAfter = response.headers.get('Retry-After');
-            showError('レート制限に達しました', `リクエストが多すぎますわ。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しくださいませ。`);
+            showError('レート制限に達しました', `リクエストが多すぎます。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しください。`);
             return;
           }
           throw new Error('Failed to fetch guilds');
@@ -266,7 +266,7 @@ if (!user) {
           container.innerHTML = `
             <div class="no-guilds">
               <h3>管理可能なサーバーがありません</h3>
-              <p>サーバーの管理権限が必要ですわ。</p>
+              <p>サーバーの管理権限が必要です。</p>
             </div>
           `;
           return;
@@ -284,7 +284,7 @@ if (!user) {
         container.appendChild(guildsGrid);
       } catch (err) {
         console.error('Failed to load guilds:', err);
-        showError('サーバー一覧の取得に失敗しました', 'もう一度お試しくださいませ。');
+        showError('サーバー一覧の取得に失敗しました', 'もう一度お試しください。');
       }
     }
 
@@ -297,7 +297,7 @@ if (!user) {
       } else {
         card.onclick = (e) => {
           e.preventDefault();
-          alert('Bot がこのサーバーに参加していません。先に Bot を招待してくださいませ。');
+          alert('Bot がこのサーバーに参加していません。先に Bot を招待してください。');
         };
       }
 
