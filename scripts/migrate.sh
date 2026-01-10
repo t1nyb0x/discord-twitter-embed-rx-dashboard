@@ -5,6 +5,9 @@ set -e
 
 echo "Running database migrations..."
 
+# データディレクトリを確実に作成
+mkdir -p ./data
+
 # Drizzle ORMのマイグレーションを実行
 npm run db:migrate
 
