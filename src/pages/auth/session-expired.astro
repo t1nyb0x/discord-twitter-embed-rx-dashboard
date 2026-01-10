@@ -1,53 +1,19 @@
 ---
 import Layout from '@/layouts/Layout.astro';
-const { message } = Astro.url.searchParams.get('message') ? { message: Astro.url.searchParams.get('message') } : { message: 'セッションの有効期限が切れましたわ' };
+import ErrorDisplay from '@/components/ErrorDisplay.astro';
+
+const messageParam = Astro.url.searchParams.get('message');
+const message = messageParam || 'セッションの有効期限が切れましたわ。再度ログインしてくださいませ。';
 ---
 
 <Layout title="再ログインが必要ですわ - TwitterRX Dashboard">
-  <div class="error-container">
-    <div class="error-card">
-      <h1>🔒 再ログインが必要ですわ</h1>
-      <p class="error-message">{message}</p>
-      
-      <div class="info-box">
-        <h2>なぜ再ログインが必要なのですか？</h2>
-        <ul>
-          <li>セッションの有効期限が切れましたわ（7日間）</li>
-          <li>セキュリティのため、定期的な再認証が必要ですわ</li>
-        </ul>
-      </div>
-
-      <div class="action-buttons">
-        <a href="/api/auth/discord/login" class="btn btn-primary">
-          Discord でログイン
-        </a>
-        <a href="/" class="btn btn-secondary">
-          トップページに戻る
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <style>
-    .error-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 70vh;
-      padding: 2rem;
-    }
-
-    .error-card {
-      max-width: 600px;
-      width: 100%;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 3rem;
-      text-align: center;
-    }
-
-    h1 {
+  <ErrorDisplay 
+    title="🔒 再ログインが必要ですわ"
+    message={message}
+    details="セキュリティのため、定期的な再認証が必要です。セッションの有効期限は7日間となっております。"
+    showLogin={true}
+  />
+</Layout>
       color: #ff6b6b;
       margin-bottom: 1rem;
       font-size: 2rem;

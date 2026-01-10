@@ -1,0 +1,871 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect('/');
+}
+
+const { guildId } = Astro.params;
+
+if (!guildId) {
+  return Astro.redirect('/dashboard');
+}
+---
+
+<Layout title="チャンネル設定">
+  <div class="config-container">
+    <div id="loading-state" class="loading">
+      <div class="spinner"></div>
+      <p>設定を読み込み中...</p>
+    </div>
+
+    <div id="error-state" class="error-state" style="display: none;"></div>
+
+    <div id="config-content" style="display: none;">
+      <div class="header">
+        <a href="/dashboard" class="back-link">← サーバー一覧に戻る</a>
+        <h1 class="page-title" id="guild-name">チャンネル設定</h1>
+        <p class="page-description">
+          Bot が応答するチャンネルを設定できますわ。
+        </p>
+      </div>
+
+      <div class="info-box">
+        <h3>📌 設定の反映について</h3>
+        <p>
+          設定は保存後、<strong>通常は数秒</strong>で反映されますが、最大5分かかる場合がありますわ。<br>
+          Bot が起動している限り、設定は必ず反映されますのでご安心くださいませ。
+        </p>
+      </div>
+
+      <div class="config-section">
+        <div class="section-header">
+          <h2>全チャンネル許可</h2>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="allow-all-channels" />
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">すべてのテキストチャンネルで Bot を有効にする</span>
+        </label>
+        <p class="section-note">
+          オフにすると、下記で選択したチャンネルのみ Bot が応答しますわ。
+        </p>
+      </div>
+
+      <div id="whitelist-section" class="config-section" style="display: none;">
+        <div class="section-header">
+          <h2>許可するチャンネル</h2>
+          <button id="refresh-channels-btn" class="secondary-button">
+            🔄 チャンネル一覧を更新
+          </button>
+        </div>
+        
+        <div class="search-box">
+          <input 
+            type="text" 
+            id="channel-search" 
+            placeholder="チャンネル名で検索..."
+            class="search-input"
+          />
+        </div>
+
+        <div id="channels-loading" class="channels-loading">
+          <p>チャンネル一覧を読み込み中...</p>
+        </div>
+
+        <div id="channels-list" class="channels-list"></div>
+
+        <div class="manual-input-section">
+          <h3>🔑 チャンネルIDを直接指定</h3>
+          <p class="manual-note">
+            リストに表示されないチャンネルがある場合は、IDを直接入力できますわ。
+          </p>
+          <div class="manual-input-group">
+            <input 
+              type="text" 
+              id="manual-channel-id" 
+              placeholder="チャンネルID（数字のみ）"
+              class="manual-input"
+            />
+            <button id="add-manual-channel-btn" class="secondary-button">追加</button>
+          </div>
+          <div id="manual-channels-list" class="manual-channels-list"></div>
+        </div>
+      </div>
+
+      <div class="save-section">
+        <button id="save-btn" class="primary-button">
+          💾 設定を保存
+        </button>
+        <p class="save-note">
+          選択: <span id="selected-count">0</span> チャンネル
+          <span id="whitelist-limit-warning" class="limit-warning" style="display: none;">
+            （上限 500 件）
+          </span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .config-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      color: #666;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #5865f2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-state {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 8px;
+      padding: 2rem;
+      color: #721c24;
+      text-align: center;
+    }
+
+    .header {
+      margin-bottom: 2rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      color: #5865f2;
+      text-decoration: none;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .page-title {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+    }
+
+    .page-description {
+      color: #666;
+    }
+
+    .info-box {
+      background: #e7f3ff;
+      border: 1px solid #b3d9ff;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .info-box h3 {
+      margin-bottom: 0.5rem;
+      color: #004085;
+    }
+
+    .info-box p {
+      margin: 0;
+      color: #004085;
+      line-height: 1.6;
+    }
+
+    .config-section {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .section-header h2 {
+      font-size: 1.3rem;
+      color: #2c3e50;
+      margin: 0;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-switch input[type="checkbox"] {
+      display: none;
+    }
+
+    .toggle-slider {
+      position: relative;
+      width: 50px;
+      height: 26px;
+      background: #ccc;
+      border-radius: 13px;
+      transition: background 0.3s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: #5865f2;
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(24px);
+    }
+
+    .toggle-label {
+      font-size: 1.05rem;
+      color: #2c3e50;
+    }
+
+    .section-note {
+      margin-top: 1rem;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .search-box {
+      margin-bottom: 1rem;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #5865f2;
+      box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+    }
+
+    .channels-loading {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+
+    .channels-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+
+    .channel-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .channel-item:last-child {
+      border-bottom: none;
+    }
+
+    .channel-item:hover {
+      background: #f9f9f9;
+    }
+
+    .channel-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .channel-item label {
+      flex: 1;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #2c3e50;
+    }
+
+    .channel-item.hidden {
+      display: none;
+    }
+
+    .manual-input-section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px dashed #e0e0e0;
+    }
+
+    .manual-input-section h3 {
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+    }
+
+    .manual-note {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .manual-input-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .manual-input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    .manual-input:focus {
+      outline: none;
+      border-color: #5865f2;
+      box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+    }
+
+    .manual-channels-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .manual-channel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #5865f2;
+      color: white;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .manual-channel-badge button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+      padding: 0;
+      margin-left: 0.25rem;
+    }
+
+    .save-section {
+      text-align: center;
+      padding: 2rem 0;
+    }
+
+    .primary-button {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 1rem 2.5rem;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .primary-button:hover:not(:disabled) {
+      background: #4752c4;
+    }
+
+    .primary-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .secondary-button {
+      background: white;
+      color: #5865f2;
+      border: 1px solid #5865f2;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .secondary-button:hover:not(:disabled) {
+      background: #5865f2;
+      color: white;
+    }
+
+    .secondary-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .save-note {
+      margin-top: 1rem;
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .limit-warning {
+      color: #d9534f;
+      font-weight: 600;
+    }
+
+    .no-channels-message {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+  </style>
+
+  <script define:vars={{ guildId }}>
+    interface Channel {
+      id: string;
+      name: string;
+    }
+
+    interface GuildConfig {
+      guildId: string;
+      allowAllChannels: boolean;
+      whitelistedChannelIds: string[];
+      version: number;
+      updatedAt: string;
+    }
+
+    let currentConfig: GuildConfig | null = null;
+    let availableChannels: Channel[] = [];
+    let manuallyAddedChannels: Set<string> = new Set();
+
+    async function loadConfig() {
+      try {
+        const response = await fetch(`/api/guilds/${guildId}/config`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            showError('Bot がこのサーバーに参加していません', 'Bot を招待してから再度お試しください。');
+            return;
+          }
+          if (response.status === 401) {
+            // セッション期限切れ - リダイレクト
+            window.location.href = '/auth/session-expired?message=' + encodeURIComponent('セッションの有効期限が切れました。再度ログインしてくださいませ。');
+            return;
+          }
+          if (response.status === 429) {
+            const error = await response.json();
+            const retryAfter = response.headers.get('Retry-After');
+            showError('レート制限', `リクエストが多すぎますわ。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しくださいませ。`);
+            return;
+          }
+          throw new Error('Failed to load config');
+        }
+
+        const data = await response.json();
+        currentConfig = data.data || data;
+        updateUI();
+        await loadChannels();
+        
+      } catch (err) {
+        console.error('Failed to load config:', err);
+        showError('設定の読み込みに失敗しました', 'ページを再読み込みしてください。');
+      }
+    }
+
+    async function loadChannels() {
+      const channelsLoading = document.getElementById('channels-loading');
+      const channelsList = document.getElementById('channels-list');
+      
+      if (!channelsLoading || !channelsList) return;
+
+      channelsLoading.style.display = 'block';
+      channelsList.innerHTML = '';
+
+      try {
+        const response = await fetch(`/api/guilds/${guildId}/channels`);
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            throw new Error(`レート制限に達しました。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しくださいませ。`);
+          }
+          throw new Error('Failed to load channels');
+        }
+
+        const data = await response.json();
+        availableChannels = data.data?.channels || data.channels || [];
+
+        channelsLoading.style.display = 'none';
+
+        if (availableChannels.length === 0) {
+          channelsList.innerHTML = `
+            <div class="no-channels-message">
+              <p>チャンネル情報が取得できませんでした。</p>
+              <p>「チャンネル一覧を更新」ボタンを押して再取得してくださいませ。</p>
+            </div>
+          `;
+          return;
+        }
+
+        renderChannelsList();
+      } catch (err) {
+        console.error('Failed to load channels:', err);
+        channelsLoading.style.display = 'none';
+        channelsList.innerHTML = `
+          <div class="no-channels-message">
+            <p>${err instanceof Error ? escapeHtml(err.message) : 'チャンネル一覧の取得に失敗しました。'}</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderChannelsList() {
+      const channelsList = document.getElementById('channels-list');
+      if (!channelsList || !currentConfig) return;
+
+      channelsList.innerHTML = '';
+
+      availableChannels.forEach(channel => {
+        const item = document.createElement('div');
+        item.className = 'channel-item';
+        item.dataset.channelId = channel.id;
+        item.dataset.channelName = channel.name.toLowerCase();
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `channel-${channel.id}`;
+        checkbox.value = channel.id;
+        checkbox.checked = currentConfig.whitelistedChannelIds.includes(channel.id);
+        checkbox.addEventListener('change', updateSelectedCount);
+
+        const label = document.createElement('label');
+        label.htmlFor = `channel-${channel.id}`;
+        label.textContent = `# ${channel.name}`;
+
+        item.appendChild(checkbox);
+        item.appendChild(label);
+        channelsList.appendChild(item);
+      });
+
+      updateSelectedCount();
+    }
+
+    function updateUI() {
+      if (!currentConfig) return;
+
+      const allowAllCheckbox = document.getElementById('allow-all-channels') as HTMLInputElement;
+      const whitelistSection = document.getElementById('whitelist-section');
+      const loadingState = document.getElementById('loading-state');
+      const configContent = document.getElementById('config-content');
+
+      if (allowAllCheckbox) {
+        allowAllCheckbox.checked = currentConfig.allowAllChannels;
+        allowAllCheckbox.addEventListener('change', () => {
+          if (whitelistSection) {
+            whitelistSection.style.display = allowAllCheckbox.checked ? 'none' : 'block';
+          }
+        });
+
+        if (whitelistSection) {
+          whitelistSection.style.display = currentConfig.allowAllChannels ? 'none' : 'block';
+        }
+      }
+
+      if (loadingState) loadingState.style.display = 'none';
+      if (configContent) configContent.style.display = 'block';
+    }
+
+    function updateSelectedCount() {
+      const checkboxes = document.querySelectorAll('.channel-item input[type="checkbox"]:checked');
+      const count = checkboxes.length + manuallyAddedChannels.size;
+      
+      const selectedCount = document.getElementById('selected-count');
+      const limitWarning = document.getElementById('whitelist-limit-warning');
+      
+      if (selectedCount) {
+        selectedCount.textContent = count.toString();
+      }
+      
+      if (limitWarning) {
+        limitWarning.style.display = count > 500 ? 'inline' : 'none';
+      }
+    }
+
+    function showError(title: string, message: string) {
+      const errorState = document.getElementById('error-state');
+      const loadingState = document.getElementById('loading-state');
+      const configContent = document.getElementById('config-content');
+
+      if (loadingState) loadingState.style.display = 'none';
+      if (configContent) configContent.style.display = 'none';
+      
+      if (errorState) {
+        errorState.innerHTML = `
+          <h3>${escapeHtml(title)}</h3>
+          <p>${escapeHtml(message)}</p>
+          <button class="primary-button" onclick="location.reload()">再試行</button>
+        `;
+        errorState.style.display = 'block';
+      }
+    }
+
+    function escapeHtml(text: string): string {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // チャンネル検索
+    const searchInput = document.getElementById('channel-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
+        const items = document.querySelectorAll('.channel-item');
+        
+        items.forEach(item => {
+          const channelName = (item as HTMLElement).dataset.channelName || '';
+          if (channelName.includes(searchTerm)) {
+            item.classList.remove('hidden');
+          } else {
+            item.classList.add('hidden');
+          }
+        });
+      });
+    }
+
+    // 手動でチャンネル追加
+    const addManualBtn = document.getElementById('add-manual-channel-btn');
+    if (addManualBtn) {
+      addManualBtn.addEventListener('click', () => {
+        const input = document.getElementById('manual-channel-id') as HTMLInputElement;
+        if (!input) return;
+
+        const channelId = input.value.trim();
+        
+        if (!/^\d+$/.test(channelId)) {
+          alert('チャンネルIDは数字のみで入力してくださいませ。');
+          return;
+        }
+
+        if (manuallyAddedChannels.has(channelId)) {
+          alert('このチャンネルIDは既に追加されていますわ。');
+          return;
+        }
+
+        manuallyAddedChannels.add(channelId);
+        input.value = '';
+        renderManualChannels();
+        updateSelectedCount();
+      });
+    }
+
+    function renderManualChannels() {
+      const container = document.getElementById('manual-channels-list');
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      manuallyAddedChannels.forEach(channelId => {
+        const badge = document.createElement('div');
+        badge.className = 'manual-channel-badge';
+        badge.innerHTML = `
+          ${escapeHtml(channelId)}
+          <button onclick="removeManualChannel('${channelId}')">×</button>
+        `;
+        container.appendChild(badge);
+      });
+    }
+
+    (window as any).removeManualChannel = (channelId: string) => {
+      manuallyAddedChannels.delete(channelId);
+      renderManualChannels();
+      updateSelectedCount();
+    };
+
+    // チャンネル再取得
+    const refreshBtn = document.getElementById('refresh-channels-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        refreshBtn.setAttribute('disabled', 'true');
+        refreshBtn.textContent = '更新中...';
+
+        try {
+          const response = await fetch(`/api/guilds/${guildId}/channels/refresh`, {
+            method: 'POST',
+          });
+
+          if (!response.ok) {
+            if (response.status === 429) {
+              const error = await response.json();
+              const retryAfter = response.headers.get('Retry-After');
+              alert(`レート制限: ${error.error?.message || 'リクエストが多すぎます'}${retryAfter ? `\n${retryAfter}秒後に再度お試しください。` : ''}`);
+              return;
+            }
+            throw new Error('Failed to request refresh');
+          }
+
+          // 3秒待ってから再読み込み
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          await loadChannels();
+          
+        } catch (err) {
+          console.error('Failed to refresh channels:', err);
+          alert('チャンネル一覧の更新に失敗しました。');
+        } finally {
+          refreshBtn.removeAttribute('disabled');
+          refreshBtn.textContent = '🔄 チャンネル一覧を更新';
+        }
+      });
+    }
+
+    // 設定保存
+    const saveBtn = document.getElementById('save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        if (!currentConfig) return;
+
+        const allowAllCheckbox = document.getElementById('allow-all-channels') as HTMLInputElement;
+        if (!allowAllCheckbox) return;
+
+        const allowAllChannels = allowAllCheckbox.checked;
+
+        // ホワイトリストを収集
+        const whitelistedChannelIds: string[] = [];
+
+        if (!allowAllChannels) {
+          // チェックボックスから選択されたチャンネル
+          const checkboxes = document.querySelectorAll('.channel-item input[type="checkbox"]:checked');
+          checkboxes.forEach((checkbox) => {
+            whitelistedChannelIds.push((checkbox as HTMLInputElement).value);
+          });
+
+          // 手動で追加されたチャンネル
+          manuallyAddedChannels.forEach((id) => {
+            if (!whitelistedChannelIds.includes(id)) {
+              whitelistedChannelIds.push(id);
+            }
+          });
+
+          // 上限チェック
+          if (whitelistedChannelIds.length > 500) {
+            alert('ホワイトリストは最大 500 件までですわ。');
+            return;
+          }
+        }
+
+        // 保存ボタンを無効化
+        saveBtn.setAttribute('disabled', 'true');
+        saveBtn.textContent = '保存中...';
+
+        try {
+          const response = await fetch(`/api/guilds/${guildId}/config`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'If-Match': `"${currentConfig.version}"`,
+            },
+            body: JSON.stringify({
+              allowAllChannels,
+              whitelistedChannelIds,
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            
+            if (response.status === 429) {
+              const retryAfter = response.headers.get('Retry-After');
+              alert(`レート制限: ${error.error?.message || '更新が多すぎます'}${retryAfter ? `\n${retryAfter}秒後に再度お試しください。` : ''}`);
+              return;
+            }
+
+            if (response.status === 409) {
+              alert('設定が他のユーザーによって更新されました。ページを再読み込みしますわ。');
+              location.reload();
+              return;
+            }
+
+            if (response.status === 503) {
+              alert(`設定は保存されましたが、即時反映できませんでした。\n最大5分後に反映されますわ。\n\n${error.error?.message || ''}`);
+              // 設定を再読み込み
+              await loadConfig();
+              return;
+            }
+
+            throw new Error(error.error?.message || error.message || 'Failed to save config');
+          }
+
+          const data = await response.json();
+
+          // 警告がある場合は表示
+          if (data.warning) {
+            alert(`✅ ${data.warning}`);
+          } else {
+            alert('✅ 設定を保存しました！');
+          }
+
+          // currentConfig を更新
+          if (data.config) {
+            currentConfig = data.config;
+          }
+
+          // 設定を再読み込み（最新の状態を取得）
+          await loadConfig();
+
+        } catch (err) {
+          console.error('Failed to save config:', err);
+          alert('設定の保存に失敗しました。もう一度お試しくださいませ。');
+        } finally {
+          saveBtn.removeAttribute('disabled');
+          saveBtn.textContent = '💾 設定を保存';
+        }
+      });
+    }
+
+    // 初期化
+    loadConfig();
+  </script>
+</Layout>

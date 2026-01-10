@@ -112,3 +112,41 @@ export function createBotNotJoinedError(): Response {
     }
   );
 }
+
+/**
+ * P1対応: カスタムヘッダー付きレスポンスを作成
+ */
+export function createApiResponseWithHeaders<T>(
+  data: T,
+  status: number = 200,
+  customHeaders: Record<string, string> = {}
+): Response {
+  return new Response(JSON.stringify({ success: true, data } as ApiResponse<T>), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      ...customHeaders,
+    },
+  });
+}
+
+/**
+ * セッションからアクセストークンを取得
+ */
+export async function getAccessToken(sessionId: string): Promise<string | null> {
+  const { redis } = await import("./redis");
+  const { decryptToken } = await import("./crypto");
+
+  const sessionData = await redis.hgetall(`app:session:${sessionId}`);
+  if (!sessionData || !sessionData.encryptedAccessToken) {
+    return null;
+  }
+
+  const expiresAt = parseInt(sessionData.expiresAt as string, 10);
+  if (Date.now() >= expiresAt) {
+    return null; // トークン期限切れ
+  }
+
+  return decryptToken(sessionData.encryptedAccessToken as string);
+}
