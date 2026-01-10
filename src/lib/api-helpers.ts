@@ -67,3 +67,48 @@ export function createRateLimitError(resetAt: number): Response {
     }
   );
 }
+
+/**
+ * P1対応: 404 Not Found エラーを作成
+ * Bot が参加していない、またはオフラインの場合に使用
+ */
+export function createNotFoundError(message: string = "リソースが見つかりませんでしたわ"): Response {
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: {
+        code: "NOT_FOUND",
+        message,
+      },
+    } as ApiError),
+    {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store", // P1: キャッシュ禁止
+      },
+    }
+  );
+}
+
+/**
+ * P1対応: Bot 未参加エラーを作成
+ */
+export function createBotNotJoinedError(): Response {
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: {
+        code: "BOT_NOT_JOINED_OR_OFFLINE",
+        message: "Bot がこのギルドに参加していないか、オフラインですわ",
+      },
+    } as ApiError),
+    {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store", // P1: 動的データなのでキャッシュ禁止
+      },
+    }
+  );
+}
