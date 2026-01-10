@@ -6,10 +6,7 @@ import { configAuditLogs } from "./db/schema";
  * P2: 監査ログ保持期間（デフォルト90日）
  * 環境変数 AUDIT_LOG_RETENTION_DAYS で変更可能
  */
-const AUDIT_LOG_RETENTION_DAYS = parseInt(
-  process.env.AUDIT_LOG_RETENTION_DAYS || "90",
-  10
-);
+const AUDIT_LOG_RETENTION_DAYS = parseInt(process.env.AUDIT_LOG_RETENTION_DAYS || "90", 10);
 
 /**
  * P2: 古い監査ログをクリーンアップ
@@ -24,9 +21,7 @@ export async function cleanupOldAuditLogs(): Promise<number> {
   );
 
   try {
-    const result = await db
-      .delete(configAuditLogs)
-      .where(lt(configAuditLogs.createdAt, retentionDate.toISOString()));
+    const result = await db.delete(configAuditLogs).where(lt(configAuditLogs.createdAt, retentionDate.toISOString()));
 
     const deletedCount = result.changes || 0;
 
@@ -64,9 +59,7 @@ export function startAuditLogCleanupJob(): void {
 
   const scheduleNext = () => {
     const delay = getNextRun();
-    console.log(
-      `[AuditLogCleanup] Next cleanup scheduled in ${Math.floor(delay / 1000 / 60 / 60)} hours`
-    );
+    console.log(`[AuditLogCleanup] Next cleanup scheduled in ${Math.floor(delay / 1000 / 60 / 60)} hours`);
 
     setTimeout(async () => {
       try {
@@ -81,7 +74,5 @@ export function startAuditLogCleanupJob(): void {
   };
 
   scheduleNext();
-  console.log(
-    `[AuditLogCleanup] Cleanup job started (retention: ${AUDIT_LOG_RETENTION_DAYS} days)`
-  );
+  console.log(`[AuditLogCleanup] Cleanup job started (retention: ${AUDIT_LOG_RETENTION_DAYS} days)`);
 }

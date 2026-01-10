@@ -10,13 +10,13 @@ export async function initializeApp(): Promise<void> {
   try {
     // Redis再シード処理を実行
     await reseedRedisFromSQLite();
-    
+
     // P1: 定期リコンシルジョブを開始（10分ごと）
     startReconcileJob();
-    
+
     // P2: 監査ログクリーンアップジョブを開始（毎日2時）
     startAuditLogCleanupJob();
-    
+
     console.log("[Startup] Initialization completed");
   } catch (err) {
     console.error("[Startup] Initialization failed:", err);
@@ -35,9 +35,9 @@ function startReconcileJob(): void {
     try {
       // TODO: Bot API から参加ギルドリストを取得する
       // 現時点では Redis から既存の config キーを取得して使用
-      const configKeys = await import("./lib/redis").then(m => m.redis.keys("app:guild:*:config"));
-      const guildIds = configKeys.map(key => key.split(":")[2]);
-      
+      const configKeys = await import("./lib/redis").then((m) => m.redis.keys("app:guild:*:config"));
+      const guildIds = configKeys.map((key) => key.split(":")[2]);
+
       if (guildIds.length > 0) {
         await reconcileConfigs(guildIds);
       }
