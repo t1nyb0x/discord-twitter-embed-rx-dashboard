@@ -1,5 +1,4 @@
-// crypto importは後で使用される可能性があるため、一旦コメントアウト
-// import { encryptToken } from "./crypto";
+import { Discord } from "arctic";
 
 const CLIENT_ID = process.env.DISCORD_OAUTH2_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.DISCORD_OAUTH2_CLIENT_SECRET || "";
@@ -9,6 +8,9 @@ if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
   console.error("❌ Discord OAuth2 credentials not configured");
   process.exit(1);
 }
+
+// Arctic Discord Provider の初期化
+export const discord = new Discord(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
 export interface DiscordUser {
   id: string;
@@ -24,57 +26,25 @@ export interface DiscordGuild {
   permissions: string;
 }
 
-export interface SessionData {
-  userId: string;
-  encryptedAccessToken: string;
-  expiresAt: number;
-}
-
 /**
  * Discord OAuth2の認証URLを生成
  */
-export function getDiscordAuthUrl(state: string): string {
-  const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-    response_type: "code",
-    scope: "identify guilds",
-    state,
-  });
-
-  return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+export function createAuthorizationURL(state: string): URL {
+  return discord.createAuthorizationURL(state, ["identify", "guilds"]);
 }
 
 /**
  * 認証コードをアクセストークンに交換
  */
-export async function exchangeCodeForToken(code: string): Promise<{
+export async function validateAuthorizationCode(code: string): Promise<{
   accessToken: string;
   expiresIn: number;
 }> {
-  const response = await fetch("https://discord.com/api/oauth2/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: REDIRECT_URI,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to exchange code: ${response.status}`);
-  }
-
-  const data = await response.json();
+  const tokens = await discord.validateAuthorizationCode(code);
 
   return {
-    accessToken: data.access_token,
-    expiresIn: data.expires_in,
+    accessToken: tokens.accessToken(),
+    expiresIn: tokens.accessTokenExpiresInSeconds() || 604800, // デフォルト7日
   };
 }
 

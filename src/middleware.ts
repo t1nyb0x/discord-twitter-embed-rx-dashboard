@@ -1,8 +1,11 @@
 import { defineMiddleware } from "astro:middleware";
-import { lucia } from "./lib/auth";
+import { validateSession, getSessionCookieAttributes } from "./lib/auth";
+
+// セッションクッキー名
+const SESSION_COOKIE_NAME = "session";
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const sessionId = context.cookies.get(lucia.sessionCookieName)?.value ?? null;
+  const sessionId = context.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
 
   // P0: 認証が必要なページのパス
   const protectedPaths = ["/dashboard"];
@@ -20,25 +23,35 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next();
   }
 
-  const { session, user } = await lucia.validateSession(sessionId);
+  const result = await validateSession(sessionId);
 
-  if (session && session.fresh) {
-    const sessionCookie = lucia.createSessionCookie(session.id);
-    context.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-  }
-
-  if (!session) {
-    const sessionCookie = lucia.createBlankSessionCookie();
-    context.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+  if (!result) {
+    // セッション無効 - Cookie をクリア
+    context.cookies.delete(SESSION_COOKIE_NAME, {
+      path: "/",
+    });
 
     // P0: セッションが無効な場合、再ログインページへリダイレクト
     if (isProtectedPath) {
       return context.redirect("/auth/session-expired?message=セッションの有効期限が切れましたわ");
     }
+
+    context.locals.user = null;
+    context.locals.session = null;
+  } else {
+    // セッション有効
+    const { session, user } = result;
+
+    // Cookie を更新（TTL を延長）
+    const isSecure = process.env.NODE_ENV === "production";
+    const cookieAttributes = getSessionCookieAttributes(isSecure);
+
+    context.cookies.set(SESSION_COOKIE_NAME, session.id, cookieAttributes);
+
+    context.locals.user = user;
+    context.locals.session = session;
   }
 
-  context.locals.user = user;
-  context.locals.session = session;
   context.locals.url = context.url;
 
   return next();

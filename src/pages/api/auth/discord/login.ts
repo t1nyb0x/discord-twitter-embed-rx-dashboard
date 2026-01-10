@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import type { APIRoute } from "astro";
 import { createRateLimitError } from "@/lib/api-helpers";
-import { getDiscordAuthUrl } from "@/lib/discord";
+import { createAuthorizationURL } from "@/lib/discord";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { redis } from "@/lib/redis";
 
@@ -20,7 +20,7 @@ export const GET: APIRoute = async ({ clientAddress }) => {
   await redis.setex(`oauth:state:${state}`, 300, "1");
 
   // Discord OAuth2 URLにリダイレクト
-  const authUrl = getDiscordAuthUrl(state);
+  const authUrl = createAuthorizationURL(state);
 
-  return Response.redirect(authUrl, 302);
+  return Response.redirect(authUrl.toString(), 302);
 };

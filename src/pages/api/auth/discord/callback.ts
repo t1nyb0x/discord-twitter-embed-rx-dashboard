@@ -1,11 +1,11 @@
 import type { APIRoute } from "astro";
 import { eq } from "drizzle-orm";
-import { lucia } from "@/lib/auth";
+import { createSession, getSessionCookieAttributes } from "@/lib/auth";
 import { encryptToken } from "@/lib/crypto";
 import { generateCsrfToken } from "@/lib/csrf";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { exchangeCodeForToken, getDiscordUser, getDiscordGuilds } from "@/lib/discord";
+import { validateAuthorizationCode, getDiscordUser, getDiscordGuilds } from "@/lib/discord";
 import { redis } from "@/lib/redis";
 
 export const GET: APIRoute = async ({ url, cookies }) => {
@@ -29,7 +29,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
   try {
     // アクセストークンを取得
-    const { accessToken, expiresIn } = await exchangeCodeForToken(code);
+    const { accessToken, expiresIn } = await validateAuthorizationCode(code);
 
     // ユーザー情報を取得
     const discordUser = await getDiscordUser(accessToken);
@@ -60,18 +60,11 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       });
     }
 
-    // セッションを作成
-    const session = await lucia.createSession(userId, {});
-    const sessionCookie = lucia.createSessionCookie(session.id);
-
-    // アクセストークンを暗号化してRedisに保存
+    // アクセストークンを暗号化
     const encryptedAccessToken = encryptToken(accessToken);
-    const expiresAt = Date.now() + expiresIn * 1000;
 
-    await redis.hset(`app:session:${session.id}`, {
-      encryptedAccessToken,
-      expiresAt: expiresAt.toString(),
-    });
+    // セッションを作成
+    const session = await createSession(userId, encryptedAccessToken, expiresIn);
 
     // ギルド一覧をキャッシュ
     const guilds = await getDiscordGuilds(accessToken);
@@ -85,7 +78,9 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     await generateCsrfToken(session.id);
 
     // Cookieをセット
-    cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    const isSecure = process.env.NODE_ENV === "production";
+    const cookieAttributes = getSessionCookieAttributes(isSecure);
+    cookies.set("session", session.id, cookieAttributes);
 
     // ダッシュボードにリダイレクト
     return Response.redirect(new URL("/dashboard", url.origin), 302);
