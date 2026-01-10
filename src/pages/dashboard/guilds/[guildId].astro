@@ -28,15 +28,15 @@ if (!guildId) {
         <a href="/dashboard" class="back-link">← サーバー一覧に戻る</a>
         <h1 class="page-title" id="guild-name">チャンネル設定</h1>
         <p class="page-description">
-          Bot が応答するチャンネルを設定できますわ。
+          Bot が応答するチャンネルを設定できます。
         </p>
       </div>
 
       <div class="info-box">
         <h3>📌 設定の反映について</h3>
         <p>
-          設定は保存後、<strong>通常は数秒</strong>で反映されますが、最大5分かかる場合がありますわ。<br>
-          Bot が起動している限り、設定は必ず反映されますのでご安心くださいませ。
+          設定は保存後、<strong>通常は数秒</strong>で反映されますが、最大5分かかる場合があります。<br>
+          Bot が起動している限り、設定は必ず反映されますのでご安心ください。
         </p>
       </div>
 
@@ -50,7 +50,7 @@ if (!guildId) {
           <span class="toggle-label">すべてのテキストチャンネルで Bot を有効にする</span>
         </label>
         <p class="section-note">
-          オフにすると、下記で選択したチャンネルのみ Bot が応答しますわ。
+          オフにすると、下記で選択したチャンネルのみ Bot が応答します。
         </p>
       </div>
 
@@ -80,7 +80,7 @@ if (!guildId) {
         <div class="manual-input-section">
           <h3>🔑 チャンネルIDを直接指定</h3>
           <p class="manual-note">
-            リストに表示されないチャンネルがある場合は、IDを直接入力できますわ。
+            リストに表示されないチャンネルがある場合は、IDを直接入力できます。
           </p>
           <div class="manual-input-group">
             <input 
@@ -464,22 +464,10 @@ if (!guildId) {
   </style>
 
   <script define:vars={{ guildId }}>
-    interface Channel {
-      id: string;
-      name: string;
-    }
-
-    interface GuildConfig {
-      guildId: string;
-      allowAllChannels: boolean;
-      whitelistedChannelIds: string[];
-      version: number;
-      updatedAt: string;
-    }
-
-    let currentConfig: GuildConfig | null = null;
-    let availableChannels: Channel[] = [];
-    let manuallyAddedChannels: Set<string> = new Set();
+    // 型アノテーションなしで変数を宣言
+    let currentConfig = null;
+    let availableChannels = [];
+    let manuallyAddedChannels = new Set();
 
     async function loadConfig() {
       try {
@@ -492,13 +480,13 @@ if (!guildId) {
           }
           if (response.status === 401) {
             // セッション期限切れ - リダイレクト
-            window.location.href = '/auth/session-expired?message=' + encodeURIComponent('セッションの有効期限が切れました。再度ログインしてくださいませ。');
+            window.location.href = '/auth/session-expired?message=' + encodeURIComponent('セッションの有効期限が切れました。再度ログインしてください。');
             return;
           }
           if (response.status === 429) {
             const error = await response.json();
             const retryAfter = response.headers.get('Retry-After');
-            showError('レート制限', `リクエストが多すぎますわ。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しくださいませ。`);
+            showError('レート制限', `リクエストが多すぎます。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しください。`);
             return;
           }
           throw new Error('Failed to load config');
@@ -530,7 +518,7 @@ if (!guildId) {
         if (!response.ok) {
           if (response.status === 429) {
             const retryAfter = response.headers.get('Retry-After');
-            throw new Error(`レート制限に達しました。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しくださいませ。`);
+            throw new Error(`レート制限に達しました。${retryAfter ? `${retryAfter}秒後に` : 'しばらくしてから'}再度お試しください。`);
           }
           throw new Error('Failed to load channels');
         }
@@ -544,7 +532,7 @@ if (!guildId) {
           channelsList.innerHTML = `
             <div class="no-channels-message">
               <p>チャンネル情報が取得できませんでした。</p>
-              <p>「チャンネル一覧を更新」ボタンを押して再取得してくださいませ。</p>
+              <p>「チャンネル一覧を更新」ボタンを押して再取得してください。</p>
             </div>
           `;
           return;
@@ -596,7 +584,7 @@ if (!guildId) {
     function updateUI() {
       if (!currentConfig) return;
 
-      const allowAllCheckbox = document.getElementById('allow-all-channels') as HTMLInputElement;
+      const allowAllCheckbox = document.getElementById('allow-all-channels');
       const whitelistSection = document.getElementById('whitelist-section');
       const loadingState = document.getElementById('loading-state');
       const configContent = document.getElementById('config-content');
@@ -634,7 +622,7 @@ if (!guildId) {
       }
     }
 
-    function showError(title: string, message: string) {
+    function showError(title, message) {
       const errorState = document.getElementById('error-state');
       const loadingState = document.getElementById('loading-state');
       const configContent = document.getElementById('config-content');
@@ -652,7 +640,7 @@ if (!guildId) {
       }
     }
 
-    function escapeHtml(text: string): string {
+    function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
@@ -662,11 +650,11 @@ if (!guildId) {
     const searchInput = document.getElementById('channel-search');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
-        const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
+        const searchTerm = e.target.value.toLowerCase();
         const items = document.querySelectorAll('.channel-item');
         
         items.forEach(item => {
-          const channelName = (item as HTMLElement).dataset.channelName || '';
+          const channelName = item.dataset.channelName || '';
           if (channelName.includes(searchTerm)) {
             item.classList.remove('hidden');
           } else {
@@ -680,18 +668,18 @@ if (!guildId) {
     const addManualBtn = document.getElementById('add-manual-channel-btn');
     if (addManualBtn) {
       addManualBtn.addEventListener('click', () => {
-        const input = document.getElementById('manual-channel-id') as HTMLInputElement;
+        const input = document.getElementById('manual-channel-id');
         if (!input) return;
 
         const channelId = input.value.trim();
         
         if (!/^\d+$/.test(channelId)) {
-          alert('チャンネルIDは数字のみで入力してくださいませ。');
+          alert('チャンネルIDは数字のみで入力してください。');
           return;
         }
 
         if (manuallyAddedChannels.has(channelId)) {
-          alert('このチャンネルIDは既に追加されていますわ。');
+          alert('このチャンネルIDは既に追加されています。');
           return;
         }
 
@@ -719,7 +707,7 @@ if (!guildId) {
       });
     }
 
-    (window as any).removeManualChannel = (channelId: string) => {
+    window.removeManualChannel = (channelId) => {
       manuallyAddedChannels.delete(channelId);
       renderManualChannels();
       updateSelectedCount();
@@ -767,19 +755,19 @@ if (!guildId) {
       saveBtn.addEventListener('click', async () => {
         if (!currentConfig) return;
 
-        const allowAllCheckbox = document.getElementById('allow-all-channels') as HTMLInputElement;
+        const allowAllCheckbox = document.getElementById('allow-all-channels');
         if (!allowAllCheckbox) return;
 
         const allowAllChannels = allowAllCheckbox.checked;
 
         // ホワイトリストを収集
-        const whitelistedChannelIds: string[] = [];
+        const whitelistedChannelIds = [];
 
         if (!allowAllChannels) {
           // チェックボックスから選択されたチャンネル
           const checkboxes = document.querySelectorAll('.channel-item input[type="checkbox"]:checked');
           checkboxes.forEach((checkbox) => {
-            whitelistedChannelIds.push((checkbox as HTMLInputElement).value);
+            whitelistedChannelIds.push(checkbox.value);
           });
 
           // 手動で追加されたチャンネル
@@ -791,7 +779,7 @@ if (!guildId) {
 
           // 上限チェック
           if (whitelistedChannelIds.length > 500) {
-            alert('ホワイトリストは最大 500 件までですわ。');
+            alert('ホワイトリストは最大 500 件までです。');
             return;
           }
         }
@@ -823,13 +811,13 @@ if (!guildId) {
             }
 
             if (response.status === 409) {
-              alert('設定が他のユーザーによって更新されました。ページを再読み込みしますわ。');
+              alert('設定が他のユーザーによって更新されました。ページを再読み込みします。');
               location.reload();
               return;
             }
 
             if (response.status === 503) {
-              alert(`設定は保存されましたが、即時反映できませんでした。\n最大5分後に反映されますわ。\n\n${error.error?.message || ''}`);
+              alert(`設定は保存されましたが、即時反映できませんでした。\n最大5分後に反映されます。\n\n${error.error?.message || ''}`);
               // 設定を再読み込み
               await loadConfig();
               return;
@@ -857,7 +845,7 @@ if (!guildId) {
 
         } catch (err) {
           console.error('Failed to save config:', err);
-          alert('設定の保存に失敗しました。もう一度お試しくださいませ。');
+          alert('設定の保存に失敗しました。もう一度お試しください。');
         } finally {
           saveBtn.removeAttribute('disabled');
           saveBtn.textContent = '💾 設定を保存';

@@ -26,7 +26,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
         success: false,
         error: {
           code: "RATE_LIMIT_EXCEEDED",
-          message: "リクエストが多すぎますわ。しばらくお待ちくださいませ。",
+          message: "リクエストが多すぎます。しばらくお待ちください。",
         },
       }),
       {
@@ -131,7 +131,7 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
         success: false,
         error: {
           code: "RATE_LIMIT_EXCEEDED",
-          message: "更新が多すぎますわ。少しお待ちくださいませ。",
+          message: "更新が多すぎます。少しお待ちください。",
         },
       }),
       {
@@ -174,7 +174,7 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
 
     // バリデーション: whitelist 上限 500 件
     if (whitelistedChannelIds.length > 500) {
-      return createApiError("WHITELIST_LIMIT_EXCEEDED", "ホワイトリストは最大 500 件までですわ", 400);
+      return createApiError("WHITELIST_LIMIT_EXCEEDED", "ホワイトリストは最大 500 件までです", 400);
     }
 
     // P1: If-Match ヘッダーで楽観的ロック

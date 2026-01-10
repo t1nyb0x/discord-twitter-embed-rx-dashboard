@@ -3,114 +3,15 @@ import Layout from '@/layouts/Layout.astro';
 import ErrorDisplay from '@/components/ErrorDisplay.astro';
 
 const messageParam = Astro.url.searchParams.get('message');
-const message = messageParam || 'セッションの有効期限が切れましたわ。再度ログインしてくださいませ。';
+const message = messageParam || 'セッションの有効期限が切れました。再度ログインしてください。';
 ---
 
-<Layout title="再ログインが必要ですわ - TwitterRX Dashboard">
+<Layout title="再ログインが必要です - TwitterRX Dashboard">
   <ErrorDisplay 
-    title="🔒 再ログインが必要ですわ"
+    title="🔒 再ログインが必要です"
     message={message}
     details="セキュリティのため、定期的な再認証が必要です。セッションの有効期限は7日間となっております。"
     showLogin={true}
   />
 </Layout>
-      color: #ff6b6b;
-      margin-bottom: 1rem;
-      font-size: 2rem;
-    }
 
-    .error-message {
-      color: #666;
-      font-size: 1.1rem;
-      margin-bottom: 2rem;
-    }
-
-    .info-box {
-      background: #f8f9fa;
-      border-left: 4px solid #5865f2;
-      padding: 1.5rem;
-      margin: 2rem 0;
-      text-align: left;
-      border-radius: 6px;
-    }
-
-    .info-box h2 {
-      color: #333;
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
-    }
-
-    .info-box ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .info-box li {
-      padding: 0.5rem 0;
-      color: #555;
-    }
-
-    .info-box li:before {
-      content: "✓ ";
-      color: #5865f2;
-      font-weight: bold;
-      margin-right: 0.5rem;
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 1rem;
-      margin-top: 2rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      padding: 0.75rem 2rem;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: all 0.2s;
-      display: inline-block;
-    }
-
-    .btn-primary {
-      background: #5865f2;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #4752c4;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(88, 101, 242, 0.3);
-    }
-
-    .btn-secondary {
-      background: #e9ecef;
-      color: #333;
-    }
-
-    .btn-secondary:hover {
-      background: #dee2e6;
-    }
-
-    @media (max-width: 768px) {
-      .error-card {
-        padding: 2rem 1.5rem;
-      }
-
-      h1 {
-        font-size: 1.5rem;
-      }
-
-      .action-buttons {
-        flex-direction: column;
-      }
-
-      .btn {
-        width: 100%;
-      }
-    }
-  </style>
-</Layout>
