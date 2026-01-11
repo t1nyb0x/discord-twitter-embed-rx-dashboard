@@ -723,7 +723,7 @@ if (!guildId) {
         refreshBtn.textContent = '更新中...';
 
         try {
-          const response = await fetch(`/api/guilds/${guildId}/channels/refresh`, {
+          const response = await fetch(`/api/guilds/${guildId}/channels`, {
             method: 'POST',
           });
 
