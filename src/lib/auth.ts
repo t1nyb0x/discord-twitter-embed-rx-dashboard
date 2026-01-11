@@ -1,5 +1,8 @@
 import { base32 } from "oslo/encoding";
+import { eq } from "drizzle-orm";
 import { redis } from "./redis";
+import { db } from "./db";
+import { users } from "./db/schema";
 
 // セッション有効期限: 7日間
 const SESSION_TTL = 7 * 24 * 60 * 60; // seconds
@@ -68,13 +71,20 @@ export async function validateSession(sessionId: string): Promise<{
     return null;
   }
 
-  // ユーザー情報を構築（Redis に別途保存していないため、セッションから復元）
-  // 実際の実装では、ユーザー情報を別途 Redis に保存することも検討可能
+  // ユーザー情報をDBから取得
+  const dbUser = await db.select().from(users).where(eq(users.id, session.userId)).get();
+
+  if (!dbUser) {
+    // ユーザーが存在しない場合はセッションを無効化
+    await invalidateSession(sessionId);
+    return null;
+  }
+
   const user: User = {
-    id: session.userId,
-    discordId: session.userId,
-    username: "", // 必要に応じて別途取得
-    avatar: null,
+    id: dbUser.id,
+    discordId: dbUser.discordId,
+    username: dbUser.username,
+    avatar: dbUser.avatar,
   };
 
   return { session, user };

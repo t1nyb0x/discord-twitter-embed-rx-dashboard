@@ -83,7 +83,12 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     cookies.set("session", session.id, cookieAttributes);
 
     // ダッシュボードにリダイレクト
-    return Response.redirect(new URL("/dashboard", url.origin), 302);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: new URL("/dashboard", url.origin).toString(),
+      },
+    });
   } catch (err) {
     console.error("[OAuth Callback] Error:", err);
     return new Response("Authentication failed", { status: 500 });

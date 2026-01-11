@@ -17,7 +17,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     // P0: 保護されたページにアクセスしようとした場合、再ログインページへリダイレクト
     if (isProtectedPath) {
-      return context.redirect("/auth/session-expired?message=ログインが必要です");
+      return context.redirect("/auth/session-expired?message=" + encodeURIComponent("ログインが必要です"));
     }
 
     return next();
@@ -33,7 +33,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     // P0: セッションが無効な場合、再ログインページへリダイレクト
     if (isProtectedPath) {
-      return context.redirect("/auth/session-expired?message=セッションの有効期限が切れました");
+      return context.redirect(
+        "/auth/session-expired?message=" + encodeURIComponent("セッションの有効期限が切れました")
+      );
     }
 
     context.locals.user = null;
