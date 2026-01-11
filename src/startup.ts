@@ -1,11 +1,14 @@
 import { startAuditLogCleanupJob } from "./lib/audit-cleanup";
+import { createLogger } from "./lib/logger";
 import { reconcileConfigs, reseedRedisFromSQLite } from "./lib/reseed";
+
+const logger = createLogger("Startup");
 
 /**
  * アプリケーション起動時の初期化処理
  */
 export async function initializeApp(): Promise<void> {
-  console.log("[Startup] Initializing Dashboard...");
+  logger.info("Initializing Dashboard...");
 
   try {
     // Redis再シード処理を実行
@@ -17,9 +20,9 @@ export async function initializeApp(): Promise<void> {
     // P2: 監査ログクリーンアップジョブを開始（毎日2時）
     startAuditLogCleanupJob();
 
-    console.log("[Startup] Initialization completed");
+    logger.info("Initialization completed");
   } catch (err) {
-    console.error("[Startup] Initialization failed:", err);
+    logger.error("Initialization failed", { error: err instanceof Error ? err.message : String(err) });
     throw err;
   }
 }
@@ -42,18 +45,18 @@ function startReconcileJob(): void {
         await reconcileConfigs(guildIds);
       }
     } catch (err) {
-      console.error("[ReconcileJob] Error during reconcile:", err);
+      logger.error("ReconcileJob failed", { error: err instanceof Error ? err.message : String(err) });
       // エラーが発生してもジョブは継続
     }
   }, RECONCILE_INTERVAL_MS);
 
-  console.log(`[Startup] Reconcile job started (interval: ${RECONCILE_INTERVAL_MS / 1000}s)`);
+  logger.info(`Reconcile job started (interval: ${RECONCILE_INTERVAL_MS / 1000}s)`);
 }
 
 // Astro開発サーバー起動時に実行
 if (import.meta.env.DEV) {
   initializeApp().catch((err) => {
-    console.error("[Startup] Failed to initialize:", err);
+    logger.error("Failed to initialize", { error: err instanceof Error ? err.message : String(err) });
     process.exit(1);
   });
 }

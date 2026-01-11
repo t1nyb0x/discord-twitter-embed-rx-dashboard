@@ -283,6 +283,7 @@ if (!user) {
         container.innerHTML = '';
         container.appendChild(guildsGrid);
       } catch (err) {
+        // Client-side error logging for browser debugging
         console.error('Failed to load guilds:', err);
         showError('サーバー一覧の取得に失敗しました', 'もう一度お試しください。');
       }

@@ -1,7 +1,10 @@
 import type { APIRoute } from "astro";
 import { createApiResponse, createApiError } from "@/lib/api-helpers";
+import { createLogger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { redis } from "@/lib/redis";
+
+const logger = createLogger("API:Channels");
 
 /**
  * 利用可能なチャンネル一覧を取得
@@ -70,14 +73,20 @@ export const GET: APIRoute = async ({ params, locals }) => {
         cached: true,
       });
     } catch (err) {
-      console.error(`[API] Failed to parse channels data for guild ${guildId}:`, err);
+      logger.error("Failed to parse channels data", {
+        guildId,
+        error: err instanceof Error ? err.message : String(err),
+      });
       return createApiResponse({
         channels: [],
         cached: false,
       });
     }
   } catch (err) {
-    console.error("[API] Failed to fetch channels:", err);
+    logger.error("Failed to fetch channels", {
+      guildId,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return createApiError("INTERNAL_ERROR", "チャンネル一覧の取得に失敗しました", 500);
   }
 };
@@ -139,7 +148,10 @@ export const POST: APIRoute = async ({ params, locals }) => {
       message: "チャンネル情報の再取得をリクエストしました。数秒お待ちください。",
     });
   } catch (err) {
-    console.error("[API] Failed to request channel refresh:", err);
+    logger.error("Failed to request channel refresh", {
+      guildId,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return createApiError("INTERNAL_ERROR", "再取得リクエストに失敗しました", 500);
   }
 };

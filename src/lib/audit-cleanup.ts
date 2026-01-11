@@ -1,6 +1,9 @@
 import { lt } from "drizzle-orm";
 import { db } from "./db";
 import { configAuditLogs } from "./db/schema";
+import { createLogger } from "./logger";
+
+const logger = createLogger("AuditLogCleanup");
 
 /**
  * P2: 監査ログ保持期間（デフォルト90日）
@@ -16,9 +19,9 @@ export async function cleanupOldAuditLogs(): Promise<number> {
   const retentionDate = new Date();
   retentionDate.setDate(retentionDate.getDate() - AUDIT_LOG_RETENTION_DAYS);
 
-  console.log(
-    `[AuditLogCleanup] Cleaning up logs older than ${retentionDate.toISOString()} (retention: ${AUDIT_LOG_RETENTION_DAYS} days)`
-  );
+  logger.info(`Cleaning up logs older than ${retentionDate.toISOString()}`, {
+    retentionDays: AUDIT_LOG_RETENTION_DAYS,
+  });
 
   try {
     const result = await db.delete(configAuditLogs).where(lt(configAuditLogs.createdAt, retentionDate.toISOString()));
@@ -26,14 +29,16 @@ export async function cleanupOldAuditLogs(): Promise<number> {
     const deletedCount = result.changes || 0;
 
     if (deletedCount > 0) {
-      console.log(`[AuditLogCleanup] Deleted ${deletedCount} old audit logs`);
+      logger.info(`Deleted ${deletedCount} old audit logs`);
     } else {
-      console.log("[AuditLogCleanup] No old audit logs to delete");
+      logger.info("No old audit logs to delete");
     }
 
     return deletedCount;
   } catch (err) {
-    console.error("[AuditLogCleanup] Error during cleanup:", err);
+    logger.error("Error during cleanup", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     throw err;
   }
 }
@@ -59,13 +64,15 @@ export function startAuditLogCleanupJob(): void {
 
   const scheduleNext = () => {
     const delay = getNextRun();
-    console.log(`[AuditLogCleanup] Next cleanup scheduled in ${Math.floor(delay / 1000 / 60 / 60)} hours`);
+    logger.info(`Next cleanup scheduled in ${Math.floor(delay / 1000 / 60 / 60)} hours`);
 
     setTimeout(async () => {
       try {
         await cleanupOldAuditLogs();
       } catch (err) {
-        console.error("[AuditLogCleanup] Job failed:", err);
+        logger.error("Job failed", {
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
 
       // 次回の実行をスケジュール
@@ -74,5 +81,5 @@ export function startAuditLogCleanupJob(): void {
   };
 
   scheduleNext();
-  console.log(`[AuditLogCleanup] Cleanup job started (retention: ${AUDIT_LOG_RETENTION_DAYS} days)`);
+  logger.info(`Cleanup job started (retention: ${AUDIT_LOG_RETENTION_DAYS} days)`);
 }

@@ -2,6 +2,9 @@ import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { guildConfigs, channelWhitelist } from "./db/schema";
 import { redis } from "./redis";
+import { createLogger } from "./logger";
+
+const logger = createLogger("Reseed");
 
 /**
  * P1: スキーマバージョン定義
@@ -35,7 +38,7 @@ async function checkForMissingConfigs(guildIds: string[]): Promise<string[]> {
  * P1拡張: スキーマバージョンチェックと部分キー欠落検出
  */
 export async function reseedRedisFromSQLite(): Promise<void> {
-  console.log("[Reseed] Starting SQLite→Redis reseed...");
+  logger.info("Starting SQLite→Redis reseed");
 
   try {
     // P1: スキーマバージョンをチェック
@@ -43,9 +46,10 @@ export async function reseedRedisFromSQLite(): Promise<void> {
     const needsFullReseed = !storedVersion || parseInt(storedVersion, 10) !== CURRENT_SCHEMA_VERSION;
 
     if (needsFullReseed) {
-      console.log(
-        `[Reseed] Schema version mismatch (stored: ${storedVersion}, current: ${CURRENT_SCHEMA_VERSION}), performing full reseed`
-      );
+      logger.info("Schema version mismatch, performing full reseed", {
+        storedVersion,
+        currentVersion: CURRENT_SCHEMA_VERSION,
+      });
       await performFullReseed();
       return;
     }
@@ -55,21 +59,24 @@ export async function reseedRedisFromSQLite(): Promise<void> {
     const allGuildIds = allConfigs.map((c) => c.guildId);
 
     if (allGuildIds.length === 0) {
-      console.log("[Reseed] No configs found in SQLite");
+      logger.info("No configs found in SQLite");
       return;
     }
 
     const missingGuildIds = await checkForMissingConfigs(allGuildIds);
 
     if (missingGuildIds.length > 0) {
-      console.log(`[Reseed] Found ${missingGuildIds.length} missing configs, reseeding them...`);
+      logger.info("Found missing configs, reseeding them", { count: missingGuildIds.length });
       await reseedSpecificGuilds(missingGuildIds);
-      console.log(`[Reseed] Partial reseed completed for ${missingGuildIds.length} guilds`);
+      logger.info("Partial reseed completed", { count: missingGuildIds.length });
     } else {
-      console.log("[Reseed] All configs are present in Redis, no reseed needed");
+      logger.info("All configs are present in Redis, no reseed needed");
     }
   } catch (err) {
-    console.error("[Reseed] Error during reseed:", err);
+    logger.error("Error during reseed", {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     throw err;
   }
 }
@@ -79,20 +86,20 @@ export async function reseedRedisFromSQLite(): Promise<void> {
  * スキーマバージョンが変更された場合に実行
  */
 async function performFullReseed(): Promise<void> {
-  console.log("[Reseed] Performing full reseed...");
+  logger.info("Performing full reseed");
 
   // 既存の config キーをすべて削除
   const existingKeys = await redis.keys("app:guild:*:config");
   if (existingKeys.length > 0) {
     await redis.del(...existingKeys);
-    console.log(`[Reseed] Deleted ${existingKeys.length} existing config keys`);
+    logger.info("Deleted existing config keys", { count: existingKeys.length });
   }
 
   // SQLiteから全ギルド設定を取得
   const configs = await db.select().from(guildConfigs);
 
   if (configs.length === 0) {
-    console.log("[Reseed] No configs found in SQLite");
+    logger.info("No configs found in SQLite");
     await redis.set(SCHEMA_VERSION_KEY, CURRENT_SCHEMA_VERSION.toString());
     return;
   }
@@ -107,7 +114,7 @@ async function performFullReseed(): Promise<void> {
   // スキーマバージョンを記録
   await redis.set(SCHEMA_VERSION_KEY, CURRENT_SCHEMA_VERSION.toString());
 
-  console.log(`[Reseed] Full reseed completed: ${reseedCount} configs`);
+  logger.info("Full reseed completed", { count: reseedCount });
 }
 
 /**
@@ -126,7 +133,7 @@ async function reseedSingleGuild(guildId: string): Promise<void> {
   const config = await db.select().from(guildConfigs).where(eq(guildConfigs.guildId, guildId)).limit(1);
 
   if (config.length === 0) {
-    console.warn(`[Reseed] Config not found for guild ${guildId}`);
+    logger.warn("Config not found for guild", { guildId });
     return;
   }
 
@@ -152,7 +159,7 @@ async function reseedSingleGuild(guildId: string): Promise<void> {
  * @param joinedGuildIds Bot が現在参加しているギルドIDのリスト
  */
 export async function reconcileConfigs(joinedGuildIds: string[]): Promise<void> {
-  console.log(`[Reconcile] Checking ${joinedGuildIds.length} joined guilds...`);
+  logger.info("Checking joined guilds", { count: joinedGuildIds.length });
 
   let reconciledCount = 0;
 
@@ -167,7 +174,7 @@ export async function reconcileConfigs(joinedGuildIds: string[]): Promise<void> 
       if (config.length > 0) {
         // 既存の設定があればそれを使用
         await reseedSingleGuild(guildId);
-        console.log(`[Reconcile] Restored config for guild ${guildId}`);
+        logger.info("Restored config for guild", { guildId });
         reconciledCount++;
       } else {
         // 初回参加の場合、デフォルト設定を作成
@@ -190,15 +197,15 @@ export async function reconcileConfigs(joinedGuildIds: string[]): Promise<void> 
           updatedBy: "system", // 自動作成時はシステムユーザー
         });
 
-        console.log(`[Reconcile] Created default config for new guild ${guildId}`);
+        logger.info("Created default config for new guild", { guildId });
         reconciledCount++;
       }
     }
   }
 
   if (reconciledCount > 0) {
-    console.log(`[Reconcile] Reconciled ${reconciledCount} guilds`);
+    logger.info("Reconciled guilds", { count: reconciledCount });
   } else {
-    console.log("[Reconcile] All guilds are up to date");
+    logger.info("All guilds are up to date");
   }
 }

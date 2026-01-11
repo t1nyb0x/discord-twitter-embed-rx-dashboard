@@ -1,7 +1,10 @@
 import type { APIRoute } from "astro";
 import { createApiResponse, createApiError, getAccessToken } from "@/lib/api-helpers";
+import { createLogger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { redis } from "@/lib/redis";
+
+const logger = createLogger("API:Guilds");
 
 /**
  * ギルド一覧を取得
@@ -81,7 +84,10 @@ export const GET: APIRoute = async ({ locals }) => {
             botJoined: joined === 1,
           };
         } catch (err) {
-          console.error(`[API] Failed to check bot status for guild ${guild.id}:`, err);
+          logger.error("Failed to check bot status", {
+            guildId: guild.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
           return {
             id: guild.id,
             name: guild.name,
@@ -96,7 +102,10 @@ export const GET: APIRoute = async ({ locals }) => {
       guilds: guildsWithBotStatus,
     });
   } catch (err) {
-    console.error("[API] Failed to fetch guilds:", err);
+    logger.error("Failed to fetch guilds", {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return createApiError("INTERNAL_ERROR", "ギルド一覧の取得に失敗しました", 500);
   }
 };

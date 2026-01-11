@@ -1,4 +1,7 @@
 import { redis } from "./redis";
+import { createLogger } from "./logger";
+
+const logger = createLogger("RateLimit");
 
 /**
  * レート制限チェック（Luaスクリプトで原子化）
@@ -71,7 +74,10 @@ export async function checkRateLimit(
       resetAt: result[1],
     };
   } catch (err) {
-    console.error("[RateLimit] Error:", err);
+    logger.error("Rate limit check failed", {
+      identifier,
+      error: err instanceof Error ? err.message : String(err),
+    });
     // Redisエラー時は許可する（可用性優先）
     return {
       allowed: true,
