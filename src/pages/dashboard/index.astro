@@ -23,22 +23,29 @@ if (!user) {
     </div>
   </div>
 
-  <style>
+  <style is:global>
+    /* Dashboard Server List - Enhanced Design v2 */
     .dashboard-container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 2rem 1rem;
+      padding: 2rem 1.5rem;
     }
 
     .page-title {
-      font-size: 2rem;
+      font-size: 2.5rem;
+      font-weight: 700;
       margin-bottom: 0.5rem;
       color: #2c3e50;
+      background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .page-description {
       color: #666;
-      margin-bottom: 2rem;
+      font-size: 1.05rem;
+      margin-bottom: 2.5rem;
     }
 
     .loading {
@@ -67,39 +74,79 @@ if (!user) {
 
     .guilds-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
       margin-top: 2rem;
+    }
+
+    @media (min-width: 768px) {
+      .guilds-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .guilds-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (min-width: 1400px) {
+      .guilds-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
     }
 
     .guild-card {
       background: white;
-      border: 2px solid #e0e0e0;
-      border-radius: 12px;
+      border: 1px solid #e3e5e8;
+      border-radius: 16px;
       padding: 1.5rem;
-      transition: all 0.3s ease;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
       text-decoration: none;
       color: inherit;
       display: block;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .guild-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #5865f2, #7289da);
+      opacity: 0;
+      transition: opacity 0.25s ease;
     }
 
     .guild-card:hover {
       border-color: #5865f2;
-      box-shadow: 0 4px 12px rgba(88, 101, 242, 0.2);
-      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(88, 101, 242, 0.15);
+      transform: translateY(-4px);
+    }
+
+    .guild-card:hover::before {
+      opacity: 1;
     }
 
     .guild-card.not-joined {
-      opacity: 0.6;
+      opacity: 0.7;
       cursor: not-allowed;
-      background: #f9f9f9;
+      background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
     }
 
     .guild-card.not-joined:hover {
-      border-color: #e0e0e0;
+      border-color: #e3e5e8;
       box-shadow: none;
       transform: none;
+    }
+
+    .guild-card.not-joined::before {
+      background: linear-gradient(90deg, #999, #bbb);
     }
 
     .guild-header {
@@ -110,23 +157,24 @@ if (!user) {
     }
 
     .guild-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: #5865f2;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.5rem;
-      font-weight: bold;
+      font-weight: 700;
       color: white;
       flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(88, 101, 242, 0.2);
     }
 
     .guild-icon img {
       width: 100%;
       height: 100%;
-      border-radius: 50%;
+      border-radius: 16px;
       object-fit: cover;
     }
 
@@ -136,11 +184,12 @@ if (!user) {
     }
 
     .guild-name {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: 600;
       color: #2c3e50;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.4rem;
       word-break: break-word;
+      line-height: 1.3;
     }
 
     .guild-status {
@@ -153,79 +202,103 @@ if (!user) {
     .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.3rem;
-      padding: 0.25rem 0.6rem;
-      border-radius: 12px;
-      font-weight: 500;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.3px;
     }
 
     .status-badge.joined {
-      background: #d4edda;
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
       color: #155724;
+      box-shadow: 0 2px 4px rgba(21, 87, 36, 0.1);
     }
 
     .status-badge.not-joined {
-      background: #f8d7da;
+      background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
       color: #721c24;
+      box-shadow: 0 2px 4px rgba(114, 28, 36, 0.1);
     }
 
     .status-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
 
     .status-dot.joined {
       background: #28a745;
+      box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
     }
 
     .status-dot.not-joined {
       background: #dc3545;
+      box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+      animation: none;
     }
 
     .error-message {
-      background: #f8d7da;
+      background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
       border: 1px solid #f5c6cb;
-      border-radius: 8px;
-      padding: 1.5rem;
+      border-radius: 12px;
+      padding: 2rem;
       color: #721c24;
       text-align: center;
     }
 
     .error-message h3 {
       margin-bottom: 0.5rem;
+      font-size: 1.25rem;
     }
 
     .retry-button {
       margin-top: 1rem;
-      padding: 0.5rem 1.5rem;
-      background: #5865f2;
+      padding: 0.65rem 1.75rem;
+      background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
     }
 
     .retry-button:hover {
-      background: #4752c4;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(88, 101, 242, 0.4);
+    }
+
+    .retry-button:active {
+      transform: translateY(0);
     }
 
     .no-guilds {
       text-align: center;
-      padding: 3rem 2rem;
+      padding: 4rem 2rem;
       background: white;
-      border-radius: 12px;
+      border-radius: 16px;
       border: 2px dashed #e0e0e0;
     }
 
     .no-guilds h3 {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
       color: #2c3e50;
+      font-size: 1.5rem;
     }
 
     .no-guilds p {
       color: #666;
+      font-size: 1.05rem;
     }
   </style>
 
@@ -283,6 +356,7 @@ if (!user) {
         container.innerHTML = '';
         container.appendChild(guildsGrid);
       } catch (err) {
+        // Client-side error logging for browser debugging
         console.error('Failed to load guilds:', err);
         showError('サーバー一覧の取得に失敗しました', 'もう一度お試しください。');
       }

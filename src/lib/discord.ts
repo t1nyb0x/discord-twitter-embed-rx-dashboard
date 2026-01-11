@@ -1,11 +1,14 @@
 import { Discord } from "arctic";
+import { createLogger } from "./logger";
+
+const logger = createLogger("Discord");
 
 const CLIENT_ID = process.env.DISCORD_OAUTH2_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.DISCORD_OAUTH2_CLIENT_SECRET || "";
 const REDIRECT_URI = process.env.DISCORD_OAUTH2_REDIRECT_URI || "";
 
 if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-  console.error("❌ Discord OAuth2 credentials not configured");
+  logger.error("Discord OAuth2 credentials not configured");
   process.exit(1);
 }
 

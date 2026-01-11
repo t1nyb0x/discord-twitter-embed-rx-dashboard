@@ -6,7 +6,10 @@ import { generateCsrfToken } from "@/lib/csrf";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { validateAuthorizationCode, getDiscordUser, getDiscordGuilds } from "@/lib/discord";
+import { createLogger } from "@/lib/logger";
 import { redis } from "@/lib/redis";
+
+const logger = createLogger("OAuth:Callback");
 
 export const GET: APIRoute = async ({ url, cookies }) => {
   const code = url.searchParams.get("code");
@@ -90,7 +93,10 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       },
     });
   } catch (err) {
-    console.error("[OAuth Callback] Error:", err);
+    logger.error("Authentication failed", {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return new Response("Authentication failed", { status: 500 });
   }
 };

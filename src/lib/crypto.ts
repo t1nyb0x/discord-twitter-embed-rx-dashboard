@@ -1,4 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
+import { createLogger } from "./logger";
+
+const logger = createLogger("Crypto");
 
 const ALGORITHM = "aes-256-gcm";
 
@@ -8,27 +11,29 @@ const SESSION_SECRET = process.env.SESSION_SECRET || "";
 
 // ★ P0対応: 起動時チェック - 未設定なら即座にエラーで停止
 if (!ENCRYPTION_SALT || ENCRYPTION_SALT.length < 16) {
-  console.error("╔════════════════════════════════════════════════════════════╗");
-  console.error("║           ❌ ENCRYPTION_SALT NOT CONFIGURED ❌              ║");
-  console.error("╠════════════════════════════════════════════════════════════╣");
-  console.error("║ ENCRYPTION_SALT 環境変数が設定されていないか、短すぎます。 ║");
-  console.error("║ 以下のコマンドで生成してください:                          ║");
-  console.error("║   openssl rand -base64 32                                  ║");
-  console.error("║                                                            ║");
-  console.error("║ .env ファイルに追加:                                        ║");
-  console.error("║   ENCRYPTION_SALT=<生成した値>                              ║");
-  console.error("╚════════════════════════════════════════════════════════════╝");
+  logger.error("ENCRYPTION_SALT not configured properly");
+  logger.error("╔════════════════════════════════════════════════════════════╗");
+  logger.error("║           ❌ ENCRYPTION_SALT NOT CONFIGURED ❌              ║");
+  logger.error("╠════════════════════════════════════════════════════════════╣");
+  logger.error("║ ENCRYPTION_SALT 環境変数が設定されていないか、短すぎます。 ║");
+  logger.error("║ 以下のコマンドで生成してください:                          ║");
+  logger.error("║   openssl rand -base64 32                                  ║");
+  logger.error("║                                                            ║");
+  logger.error("║ .env ファイルに追加:                                        ║");
+  logger.error("║   ENCRYPTION_SALT=<生成した値>                              ║");
+  logger.error("╚════════════════════════════════════════════════════════════╝");
   process.exit(1);
 }
 
 if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
-  console.error("╔════════════════════════════════════════════════════════════╗");
-  console.error("║           ❌ SESSION_SECRET NOT CONFIGURED ❌               ║");
-  console.error("╠════════════════════════════════════════════════════════════╣");
-  console.error("║ SESSION_SECRET 環境変数が設定されていないか、短すぎます。  ║");
-  console.error("║ 以下のコマンドで生成してください:                          ║");
-  console.error("║   openssl rand -base64 32                                  ║");
-  console.error("╚════════════════════════════════════════════════════════════╝");
+  logger.error("SESSION_SECRET not configured properly");
+  logger.error("╔════════════════════════════════════════════════════════════╗");
+  logger.error("║           ❌ SESSION_SECRET NOT CONFIGURED ❌               ║");
+  logger.error("╠════════════════════════════════════════════════════════════╣");
+  logger.error("║ SESSION_SECRET 環境変数が設定されていないか、短すぎます。  ║");
+  logger.error("║ 以下のコマンドで生成してください:                          ║");
+  logger.error("║   openssl rand -base64 32                                  ║");
+  logger.error("╚════════════════════════════════════════════════════════════╝");
   process.exit(1);
 }
 

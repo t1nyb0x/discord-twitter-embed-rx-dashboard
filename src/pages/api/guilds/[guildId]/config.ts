@@ -3,8 +3,11 @@ import { eq } from "drizzle-orm";
 import { createApiError, createApiResponseWithHeaders } from "@/lib/api-helpers";
 import { db } from "@/lib/db";
 import { channelWhitelist, configAuditLogs, guildConfigs } from "@/lib/db/schema";
+import { createLogger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { redis } from "@/lib/redis";
+
+const logger = createLogger("API:GuildConfig");
 
 /**
  * ギルド設定を取得
@@ -78,7 +81,10 @@ export const GET: APIRoute = async ({ params, locals }) => {
           where: eq(guildConfigs.guildId, guildId),
         });
       } catch (err) {
-        console.error(`[API] Failed to create default config for guild ${guildId}:`, err);
+        logger.error("Failed to create default config", {
+          guildId,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
@@ -106,7 +112,10 @@ export const GET: APIRoute = async ({ params, locals }) => {
       }
     );
   } catch (err) {
-    console.error("[API] Failed to fetch guild config:", err);
+    logger.error("Failed to fetch guild config", {
+      guildId,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return createApiError("INTERNAL_ERROR", "設定の取得に失敗しました", 500);
   }
 };
@@ -213,56 +222,67 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
       where: eq(channelWhitelist.guildId, guildId),
     });
 
+    // トランザクション外で変更前のデータを準備
+    const previousChannelIds = previousWhitelist.map((w) => w.channelId);
+    const updatedAt = new Date().toISOString();
+    const nextVersion = currentConfig.version + 1;
+
     // トランザクション処理
     let newVersion: number;
     try {
-      await db.transaction(async (tx) => {
-        // P0: 楽観的ロックを UPDATE WHERE version で担保
-        newVersion = currentConfig.version + 1;
-        await tx
-          .update(guildConfigs)
-          .set({
-            allowAllChannels,
-            version: newVersion,
-            updatedAt: new Date().toISOString(),
-            updatedBy: user.id,
-          })
-          .where(eq(guildConfigs.guildId, guildId));
+      // P0: 楽観的ロックを UPDATE WHERE version で担保
+      db.update(guildConfigs)
+        .set({
+          allowAllChannels,
+          version: nextVersion,
+          updatedAt,
+          updatedBy: user.id,
+        })
+        .where(eq(guildConfigs.guildId, guildId))
+        .run();
 
-        // 既存のホワイトリストを削除
-        await tx.delete(channelWhitelist).where(eq(channelWhitelist.guildId, guildId));
+      // 既存のホワイトリストを削除
+      db.delete(channelWhitelist).where(eq(channelWhitelist.guildId, guildId)).run();
 
-        // 新しいホワイトリストを挿入
-        if (whitelistedChannelIds.length > 0) {
-          await tx.insert(channelWhitelist).values(
+      // 新しいホワイトリストを挿入
+      if (whitelistedChannelIds.length > 0) {
+        db.insert(channelWhitelist)
+          .values(
             whitelistedChannelIds.map((channelId: string) => ({
               guildId,
               channelId,
             }))
-          );
-        }
+          )
+          .run();
+      }
 
-        // 監査ログ記録
-        await tx.insert(configAuditLogs).values({
+      // 監査ログ記録
+      db.insert(configAuditLogs)
+        .values({
           guildId,
           userId: user.id,
           action: "update",
           oldVersion: currentConfig.version,
-          newVersion,
+          newVersion: nextVersion,
           changes: JSON.stringify({
             previous: {
               allowAllChannels: currentConfig.allowAllChannels,
-              whitelistedChannelIds: previousWhitelist.map((w) => w.channelId),
+              whitelistedChannelIds: previousChannelIds,
             },
             current: {
               allowAllChannels,
               whitelistedChannelIds,
             },
           }),
-        });
-      });
+        })
+        .run();
+
+      newVersion = nextVersion;
     } catch (txErr) {
-      console.error(`[API] Transaction failed for guild ${guildId}:`, txErr);
+      logger.error("Transaction failed", {
+        guildId,
+        error: txErr instanceof Error ? txErr.message : String(txErr),
+      });
       return createApiError("TRANSACTION_FAILED", "設定の保存に失敗しました", 500);
     }
 
@@ -279,7 +299,10 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
     try {
       await redis.set(`app:guild:${guildId}:config`, JSON.stringify(newConfig));
     } catch (redisErr) {
-      console.error(`[API] Failed to save config to Redis for guild ${guildId}:`, redisErr);
+      logger.error("Failed to save config to Redis", {
+        guildId,
+        error: redisErr instanceof Error ? redisErr.message : String(redisErr),
+      });
       // P0: 503 時のレスポンスに現在 version を含める（degraded mode）
       return new Response(
         JSON.stringify({
@@ -313,7 +336,10 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
         })
       );
     } catch (publishErr) {
-      console.error(`[API] Failed to publish update for guild ${guildId}:`, publishErr);
+      logger.error("Failed to publish update", {
+        guildId,
+        error: publishErr instanceof Error ? publishErr.message : String(publishErr),
+      });
       publishSuccess = false;
     }
 
@@ -343,7 +369,11 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
       }
     );
   } catch (err) {
-    console.error("[API] Failed to save guild config:", err);
+    logger.error("Failed to save guild config", {
+      guildId,
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return createApiError("INTERNAL_ERROR", "設定の保存に失敗しました", 500);
   }
 };
