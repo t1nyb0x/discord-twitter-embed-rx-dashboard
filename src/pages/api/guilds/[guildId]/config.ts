@@ -222,54 +222,62 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
       where: eq(channelWhitelist.guildId, guildId),
     });
 
+    // トランザクション外で変更前のデータを準備
+    const previousChannelIds = previousWhitelist.map((w) => w.channelId);
+    const updatedAt = new Date().toISOString();
+    const nextVersion = currentConfig.version + 1;
+
     // トランザクション処理
     let newVersion: number;
     try {
-      await db.transaction(async (tx) => {
-        // P0: 楽観的ロックを UPDATE WHERE version で担保
-        newVersion = currentConfig.version + 1;
-        await tx
-          .update(guildConfigs)
-          .set({
-            allowAllChannels,
-            version: newVersion,
-            updatedAt: new Date().toISOString(),
-            updatedBy: user.id,
-          })
-          .where(eq(guildConfigs.guildId, guildId));
+      // P0: 楽観的ロックを UPDATE WHERE version で担保
+      db.update(guildConfigs)
+        .set({
+          allowAllChannels,
+          version: nextVersion,
+          updatedAt,
+          updatedBy: user.id,
+        })
+        .where(eq(guildConfigs.guildId, guildId))
+        .run();
 
-        // 既存のホワイトリストを削除
-        await tx.delete(channelWhitelist).where(eq(channelWhitelist.guildId, guildId));
+      // 既存のホワイトリストを削除
+      db.delete(channelWhitelist).where(eq(channelWhitelist.guildId, guildId)).run();
 
-        // 新しいホワイトリストを挿入
-        if (whitelistedChannelIds.length > 0) {
-          await tx.insert(channelWhitelist).values(
+      // 新しいホワイトリストを挿入
+      if (whitelistedChannelIds.length > 0) {
+        db.insert(channelWhitelist)
+          .values(
             whitelistedChannelIds.map((channelId: string) => ({
               guildId,
               channelId,
             }))
-          );
-        }
+          )
+          .run();
+      }
 
-        // 監査ログ記録
-        await tx.insert(configAuditLogs).values({
+      // 監査ログ記録
+      db.insert(configAuditLogs)
+        .values({
           guildId,
           userId: user.id,
           action: "update",
           oldVersion: currentConfig.version,
-          newVersion,
+          newVersion: nextVersion,
           changes: JSON.stringify({
             previous: {
               allowAllChannels: currentConfig.allowAllChannels,
-              whitelistedChannelIds: previousWhitelist.map((w) => w.channelId),
+              whitelistedChannelIds: previousChannelIds,
             },
             current: {
               allowAllChannels,
               whitelistedChannelIds,
             },
           }),
-        });
-      });
+        })
+        .run();
+
+      newVersion = nextVersion;
     } catch (txErr) {
       logger.error("Transaction failed", {
         guildId,
