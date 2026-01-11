@@ -39,6 +39,7 @@ export const GET: APIRoute = async ({ locals }) => {
   try {
     // アクセストークンを取得
     const accessToken = await getAccessToken(session.id);
+
     if (!accessToken) {
       return createApiError("TOKEN_EXPIRED", "セッションの有効期限が切れました。再ログインしてください。", 401);
     }

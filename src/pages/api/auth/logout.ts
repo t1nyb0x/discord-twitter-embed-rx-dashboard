@@ -20,5 +20,10 @@ export const POST: APIRoute = async ({ locals, cookies }) => {
     path: "/",
   });
 
-  return Response.redirect(new URL("/", locals.url.origin), 302);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: new URL("/", locals.url.origin).toString(),
+    },
+  });
 };

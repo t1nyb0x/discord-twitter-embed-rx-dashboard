@@ -138,15 +138,22 @@ export async function getAccessToken(sessionId: string): Promise<string | null> 
   const { redis } = await import("./redis");
   const { decryptToken } = await import("./crypto");
 
-  const sessionData = await redis.hgetall(`app:session:${sessionId}`);
-  if (!sessionData || !sessionData.encryptedAccessToken) {
+  // セッションデータを取得（lucia:session: キーから）
+  const sessionData = await redis.get(`lucia:session:${sessionId}`);
+  if (!sessionData) {
     return null;
   }
 
-  const expiresAt = parseInt(sessionData.expiresAt as string, 10);
+  // JSON パース
+  const session = JSON.parse(sessionData);
+  if (!session.encryptedAccessToken) {
+    return null;
+  }
+
+  const expiresAt = session.expiresAt;
   if (Date.now() >= expiresAt) {
     return null; // トークン期限切れ
   }
 
-  return decryptToken(sessionData.encryptedAccessToken as string);
+  return decryptToken(session.encryptedAccessToken);
 }

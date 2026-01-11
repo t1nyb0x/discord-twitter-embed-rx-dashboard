@@ -22,5 +22,10 @@ export const GET: APIRoute = async ({ clientAddress }) => {
   // Discord OAuth2 URLにリダイレクト
   const authUrl = createAuthorizationURL(state);
 
-  return Response.redirect(authUrl.toString(), 302);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: authUrl.toString(),
+    },
+  });
 };

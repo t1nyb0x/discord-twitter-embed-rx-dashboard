@@ -8,14 +8,23 @@ WORKDIR /app
 # workspace のルート設定をコピー
 COPY package.json package-lock.json ./
 
-# packages/shared をコピーしてビルド
-COPY packages ./packages
-RUN npm ci --workspace=@twitterrx/shared
+# packages/shared の package.json をコピー
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/shared/tsconfig.json ./packages/shared/
+
+# Dashboard の package.json をコピー
+COPY dashboard/package.json ./dashboard/
+COPY dashboard/tsconfig.json ./dashboard/
+
+# 依存関係をインストール（この層はpackage.jsonが変わらない限りキャッシュされる）
+RUN npm ci --workspace=@twitterrx/shared --workspace=@twitterrx/dashboard
+
+# packages/shared のソースをコピーしてビルド
+COPY packages/shared ./packages/shared
 RUN npm run build --workspace=@twitterrx/shared
 
-# Dashboard のソースをコピー
+# Dashboard のソースをコピーしてビルド
 COPY dashboard ./dashboard
-RUN npm ci --workspace=@twitterrx/dashboard
 RUN npm run db:generate --workspace=@twitterrx/dashboard
 RUN npm run build --workspace=@twitterrx/dashboard
 
