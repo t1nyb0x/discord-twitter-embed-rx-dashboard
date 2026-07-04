@@ -22,9 +22,9 @@ export const GET: APIRoute = async ({ url, cookies }) => {
   }
 
   const stateKey = `oauth:state:${state}`;
-  const stateExists = await redis.get(stateKey);
+  const codeVerifier = await redis.get(stateKey);
 
-  if (!stateExists) {
+  if (!codeVerifier) {
     return new Response("Invalid or expired state", { status: 400 });
   }
 
@@ -33,7 +33,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
   try {
     // アクセストークンを取得
-    const { accessToken, expiresIn } = await validateAuthorizationCode(code);
+    const { accessToken, expiresIn } = await validateAuthorizationCode(code, codeVerifier);
 
     // ユーザー情報を取得
     const discordUser = await getDiscordUser(accessToken);

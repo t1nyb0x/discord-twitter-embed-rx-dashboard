@@ -3,7 +3,7 @@ import { randomBytes } from "crypto";
 import type { APIRoute } from "astro";
 
 import { createRateLimitError } from "@/lib/api-helpers";
-import { createAuthorizationURL } from "@/lib/discord";
+import { createAuthorizationURL, generateCodeVerifier } from "@/lib/discord";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { redis } from "@/lib/redis";
 
@@ -17,12 +17,13 @@ export const GET: APIRoute = async ({ clientAddress }) => {
 
   // stateトークンを生成（CSRF対策）
   const state = randomBytes(32).toString("hex");
+  const codeVerifier = generateCodeVerifier();
 
-  // stateをRedisに保存（5分間有効）
-  await redis.setex(`oauth:state:${state}`, 300, "1");
+  // stateをキーにcodeVerifierをRedisに保存（5分間有効）
+  await redis.setex(`oauth:state:${state}`, 300, codeVerifier);
 
   // Discord OAuth2 URLにリダイレクト
-  const authUrl = createAuthorizationURL(state);
+  const authUrl = createAuthorizationURL(state, codeVerifier);
 
   return new Response(null, {
     status: 302,

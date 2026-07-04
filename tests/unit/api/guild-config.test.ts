@@ -40,40 +40,28 @@ vi.mock("@/lib/redis", () => ({
   redis: mockRedis,
 }));
 
-const mockDb = {
-  query: {
-    guildConfigs: { findFirst: vi.fn() },
-    channelWhitelist: { findMany: vi.fn() },
-  },
-  insert: vi.fn(),
-  update: vi.fn(),
-  delete: vi.fn(),
-};
-vi.mock("@/lib/db", () => ({
-  db: mockDb,
-}));
-
-vi.mock("@/lib/db/schema", () => ({
-  guildConfigs: { guildId: "guild_id" },
-  channelWhitelist: { guildId: "guild_id" },
-  configAuditLogs: {},
-}));
-
-vi.mock("drizzle-orm", () => ({
-  eq: vi.fn((_col: unknown, val: unknown) => ({ column: _col, value: val })),
+const mockFindGuildConfig = vi.fn();
+const mockFindChannelWhitelist = vi.fn();
+const mockCreateDefaultGuildConfig = vi.fn();
+const mockSaveGuildConfig = vi.fn();
+vi.mock("@/lib/db/repositories/guild-config", () => ({
+  findGuildConfig: (...args: unknown[]) => mockFindGuildConfig(...args),
+  findChannelWhitelist: (...args: unknown[]) => mockFindChannelWhitelist(...args),
+  createDefaultGuildConfig: (...args: unknown[]) => mockCreateDefaultGuildConfig(...args),
+  saveGuildConfig: (...args: unknown[]) => mockSaveGuildConfig(...args),
 }));
 
 describe("API: /api/guilds/[guildId]/config", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // デフォルト: レート制限OK
     mockCheckRateLimit.mockResolvedValue({ allowed: true, resetAt: 0 });
-    // デフォルト: アクセストークンあり
     mockGetAccessToken.mockResolvedValue("valid-access-token");
-    // デフォルト: 権限あり
     mockVerifyUserGuildPermission.mockResolvedValue(true);
-    // デフォルト: Bot 参加済み
     mockRedis.exists.mockResolvedValue(1);
+    mockFindGuildConfig.mockResolvedValue(undefined);
+    mockFindChannelWhitelist.mockResolvedValue([]);
+    mockCreateDefaultGuildConfig.mockResolvedValue(undefined);
+    mockSaveGuildConfig.mockReturnValue(2);
   });
 
   describe("GET", () => {
@@ -131,13 +119,13 @@ describe("API: /api/guilds/[guildId]/config", () => {
     });
 
     it("設定が存在する場合 200 と設定データを返す", async () => {
-      mockDb.query.guildConfigs.findFirst.mockResolvedValue({
+      mockFindGuildConfig.mockResolvedValue({
         guildId: "123456789012345678",
         allowAllChannels: true,
         version: 1,
         updatedAt: "2024-01-01T00:00:00.000Z",
       });
-      mockDb.query.channelWhitelist.findMany.mockResolvedValue([
+      mockFindChannelWhitelist.mockResolvedValue([
         { channelId: "111111111111111111" },
         { channelId: "222222222222222222" },
       ]);
@@ -292,7 +280,7 @@ describe("API: /api/guilds/[guildId]/config", () => {
     });
 
     it("バージョン不一致の場合 409 を返す", async () => {
-      mockDb.query.guildConfigs.findFirst.mockResolvedValue({
+      mockFindGuildConfig.mockResolvedValue({
         guildId: "123456789012345678",
         allowAllChannels: true,
         version: 2,

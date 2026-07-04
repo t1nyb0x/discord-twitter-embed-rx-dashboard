@@ -1,4 +1,6 @@
-import { Discord } from "arctic";
+import { Discord, generateCodeVerifier } from "arctic";
+
+export { generateCodeVerifier };
 
 import { createLogger } from "./logger";
 import { redis } from "./redis";
@@ -34,18 +36,18 @@ export interface DiscordGuild {
 /**
  * Discord OAuth2の認証URLを生成
  */
-export function createAuthorizationURL(state: string): URL {
-  return discord.createAuthorizationURL(state, ["identify", "guilds"]);
+export function createAuthorizationURL(state: string, codeVerifier: string): URL {
+  return discord.createAuthorizationURL(state, codeVerifier, ["identify", "guilds"]);
 }
 
 /**
  * 認証コードをアクセストークンに交換
  */
-export async function validateAuthorizationCode(code: string): Promise<{
+export async function validateAuthorizationCode(code: string, codeVerifier: string): Promise<{
   accessToken: string;
   expiresIn: number;
 }> {
-  const tokens = await discord.validateAuthorizationCode(code);
+  const tokens = await discord.validateAuthorizationCode(code, codeVerifier);
 
   return {
     accessToken: tokens.accessToken(),

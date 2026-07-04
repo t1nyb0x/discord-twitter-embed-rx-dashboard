@@ -1,10 +1,13 @@
 import { MAX_URLS_PER_MESSAGE_LIMIT } from "@rx-twitter/shared";
 import type { APIRoute } from "astro";
-import { eq } from "drizzle-orm";
 
 import { createApiError, createApiResponseWithHeaders, getAccessToken } from "@/lib/api-helpers";
-import { db } from "@/lib/db";
-import { channelWhitelist, configAuditLogs, guildConfigs } from "@/lib/db/schema";
+import {
+  createDefaultGuildConfig,
+  findChannelWhitelist,
+  findGuildConfig,
+  saveGuildConfig,
+} from "@/lib/db/repositories/guild-config";
 import { verifyUserGuildPermission } from "@/lib/discord";
 import { createLogger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -77,28 +80,12 @@ export const GET: APIRoute = async ({ params, locals }) => {
       );
     }
 
-    // SQLite から設定を取得
-    let config = await db.query.guildConfigs.findFirst({
-      where: eq(guildConfigs.guildId, guildId),
-    });
+    let config = await findGuildConfig(guildId);
 
     // P1: 設定が存在しない場合はデフォルトを作成（INSERT OR IGNORE で冪等化）
     if (!config) {
       try {
-        await db
-          .insert(guildConfigs)
-          .values({
-            guildId,
-            allowAllChannels: true,
-            version: 1,
-            updatedAt: new Date().toISOString(),
-            updatedBy: user.id,
-          })
-          .onConflictDoNothing();
-
-        config = await db.query.guildConfigs.findFirst({
-          where: eq(guildConfigs.guildId, guildId),
-        });
+        config = await createDefaultGuildConfig(guildId, user.id);
       } catch (err) {
         logger.error("Failed to create default config", {
           guildId,
@@ -111,10 +98,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
       return createApiError("CONFIG_CREATE_FAILED", "設定の作成に失敗しました", 500);
     }
 
-    // ホワイトリストを取得
-    const whitelist = await db.query.channelWhitelist.findMany({
-      where: eq(channelWhitelist.guildId, guildId),
-    });
+    const whitelist = await findChannelWhitelist(guildId);
 
     return createApiResponseWithHeaders(
       {
@@ -277,10 +261,7 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
 
     const expectedVersion = parseInt(versionMatch[1], 10);
 
-    // 現在の設定を取得
-    const currentConfig = await db.query.guildConfigs.findFirst({
-      where: eq(guildConfigs.guildId, guildId),
-    });
+    const currentConfig = await findGuildConfig(guildId);
 
     if (!currentConfig) {
       return createApiError("CONFIG_NOT_FOUND", "設定が見つかりません", 404);
@@ -295,69 +276,20 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
       );
     }
 
-    const previousWhitelist = await db.query.channelWhitelist.findMany({
-      where: eq(channelWhitelist.guildId, guildId),
-    });
-
-    // トランザクション外で変更前のデータを準備
+    const previousWhitelist = await findChannelWhitelist(guildId);
     const previousChannelIds = previousWhitelist.map((w) => w.channelId);
-    const updatedAt = new Date().toISOString();
-    const nextVersion = currentConfig.version + 1;
 
-    // トランザクション処理
     let newVersion: number;
     try {
-      // P0: 楽観的ロックを UPDATE WHERE version で担保
-      db.update(guildConfigs)
-        .set({
-          allowAllChannels,
-          version: nextVersion,
-          updatedAt,
-          updatedBy: user.id,
-          maxUrlsPerMessage: normalizedMaxUrls,
-        })
-        .where(eq(guildConfigs.guildId, guildId))
-        .run();
-
-      // 既存のホワイトリストを削除
-      db.delete(channelWhitelist).where(eq(channelWhitelist.guildId, guildId)).run();
-
-      // 新しいホワイトリストを挿入
-      if (whitelistedChannelIds.length > 0) {
-        db.insert(channelWhitelist)
-          .values(
-            whitelistedChannelIds.map((channelId: string) => ({
-              guildId,
-              channelId,
-            })),
-          )
-          .run();
-      }
-
-      // 監査ログ記録
-      db.insert(configAuditLogs)
-        .values({
-          guildId,
-          userId: user.id,
-          action: "update",
-          oldVersion: currentConfig.version,
-          newVersion: nextVersion,
-          changes: JSON.stringify({
-            previous: {
-              allowAllChannels: currentConfig.allowAllChannels,
-              whitelistedChannelIds: previousChannelIds,
-              maxUrlsPerMessage: currentConfig.maxUrlsPerMessage ?? null,
-            },
-            current: {
-              allowAllChannels,
-              whitelistedChannelIds,
-              maxUrlsPerMessage: normalizedMaxUrls,
-            },
-          }),
-        })
-        .run();
-
-      newVersion = nextVersion;
+      newVersion = saveGuildConfig({
+        guildId,
+        userId: user.id,
+        allowAllChannels,
+        whitelistedChannelIds,
+        maxUrlsPerMessage: normalizedMaxUrls,
+        currentConfig,
+        previousChannelIds,
+      });
     } catch (txErr) {
       logger.error("Transaction failed", {
         guildId,
