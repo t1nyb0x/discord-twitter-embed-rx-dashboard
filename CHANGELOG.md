@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.3.2...dashboard-v1.4.0) (2026-06-29)
+
+
+### Features
+
+* more better actions ([410b7c9](https://github.com/rx-twitter/rx-twitter-dashboard/commit/410b7c9a39476cb3e2de420eec3fa441a656b250))
+
+
+### Bug Fixes
+
+* forget to add read packages for CI-dashboard[setup] ([24ed357](https://github.com/rx-twitter/rx-twitter-dashboard/commit/24ed357a6d05be24e6ac4485d4d4c4411cf05b30))
+* use actions/cache instead of actions/cache/save in ci.yml ([6db698e](https://github.com/rx-twitter/rx-twitter-dashboard/commit/6db698ef85f389139547f5fd79816f8b59ed9526))
+
 ## [1.3.2](https://github.com/twitterrx/discord-twitter-embed-rx-dashboard/compare/dashboard-v1.3.1...dashboard-v1.3.2) (2026-05-09)
 
 
