@@ -117,10 +117,12 @@ http://localhost:4321 でアクセスできます。
 ```bash
 # 環境変数ファイルを用意
 cp .env.app.example .env.app   # アプリシークレットを編集
-cp .env.compose.example .env   # IMAGE_TAG・DASHBOARD_DOMAIN を編集
+cp .env.compose.example .env   # NODE_AUTH_TOKEN・IMAGE_TAG・DASHBOARD_DOMAIN を編集
 
 docker compose up -d
 ```
+
+ソースからビルドする場合（`compose.yml` の `image:` をコメントアウトしたまま使う場合）は、`.env` の `NODE_AUTH_TOKEN` に GitHub Packages の読み取り権限（`read:packages`）を持つ Personal Access Token を設定してください。GHCR の既存イメージを使う場合（`image:` を有効化した場合）は不要です。
 
 ### 単体ビルド・起動
 
