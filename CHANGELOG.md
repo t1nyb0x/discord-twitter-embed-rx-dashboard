@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.0...dashboard-v1.4.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* **ci:** add fallback npm ci when node_modules cache misses ([a28b894](https://github.com/rx-twitter/rx-twitter-dashboard/commit/a28b894d1b70e4b7eb511b5a434d1ef955028c3e))
+* **deps:** update astro monorepo (major) ([750b9af](https://github.com/rx-twitter/rx-twitter-dashboard/commit/750b9af2493f7bae1a322e6eef759f53176ccf3d))
+* **deps:** update dependency arctic to v3 ([6d016d8](https://github.com/rx-twitter/rx-twitter-dashboard/commit/6d016d84b1b590073bda95f35d7a01c559b1c175))
+* update Discord OAuth to use PKCE for arctic v3 compatibility ([8ed673e](https://github.com/rx-twitter/rx-twitter-dashboard/commit/8ed673e3f2bbb194e9bcf45cf012f595a20233da))
+* wrap guild config PUT writes in a single SQLite transaction ([35bce62](https://github.com/rx-twitter/rx-twitter-dashboard/commit/35bce62d21302e127681af82b59766b064f7bb4b))
+* wrap guild config PUT writes in a single SQLite transaction ([aa3207a](https://github.com/rx-twitter/rx-twitter-dashboard/commit/aa3207ae3800a8779dd67c14e15ef4d241fa1f5e))
+
 ## [1.4.0](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.3.2...dashboard-v1.4.0) (2026-06-29)
 
 
