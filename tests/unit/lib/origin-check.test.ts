@@ -14,7 +14,7 @@ function makeRequest(
 }
 
 const LOCAL_URL = new URL("http://localhost:4321/api/auth/logout");
-// 本番: nginx-proxy 背後で url.origin は http://localhost:4321 に誤計算される
+// 本番: nginx-proxy 背後では url.origin が内部アドレス http://localhost:4321 に解決される
 const PROD_URL = new URL("http://localhost:4321/api/auth/logout");
 
 describe("isCrossSiteFormRequest", () => {

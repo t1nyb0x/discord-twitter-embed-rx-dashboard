@@ -1,12 +1,13 @@
 // リバースプロキシ越しでも正しく機能する CSRF（Origin）チェック。
 //
 // Astro 標準の security.checkOrigin は無効化している（astro.config.mjs 参照）。
-// 標準実装は nginx-proxy 等のリバースプロキシ背後で url.origin を
-// http://localhost:4321 と誤計算し、ブラウザの Origin ヘッダーと不一致になって
-// 正当な POST まで 403 にしてしまう。allowedDomains でドメインを登録すれば直せるが、
-// その値はビルド時にマニフェストへ焼き込まれるため、デプロイ先ドメインを CI が知らない
-// GHCR 公開イメージでは使えない。そこで実行時にプロキシの Host / X-Forwarded-* から
-// 期待 Origin を組み立てて検証する。
+// 標準実装は nginx-proxy 等のリバースプロキシ背後では Host / X-Forwarded-* を
+// 信用せず、url.origin をコンテナが実際に受けた内部アドレス http://localhost:4321 に
+// 解決する。ブラウザは公開 URL（https://<ドメイン>）を Origin として送るため両者が
+// 一致せず、正当な POST まで 403 にしてしまう。allowedDomains でドメインを登録すれば
+// 直せるが、その値はビルド時にマニフェストへ焼き込まれるため、デプロイ先ドメインを
+// CI が知らない GHCR 公開イメージでは使えない。そこで実行時にプロキシの
+// Host / X-Forwarded-* から公開 Origin を組み立てて検証する。
 
 // CSRF（Origin）チェック対象外の安全なメソッド
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
