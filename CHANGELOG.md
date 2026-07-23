@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.3](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.2...dashboard-v1.4.3) (2026-07-23)
+
+
+### Bug Fixes
+
+* リバースプロキシ越しのログアウト403を実行時Originチェックで解消 ([253a4f7](https://github.com/rx-twitter/rx-twitter-dashboard/commit/253a4f7b92dc0ee3b9dae71dd607fd3dacbf88a1)), closes [#103](https://github.com/rx-twitter/rx-twitter-dashboard/issues/103)
+* リバースプロキシ越しのログアウト403を実行時Originチェックで解消 ([#103](https://github.com/rx-twitter/rx-twitter-dashboard/issues/103)) ([3e49050](https://github.com/rx-twitter/rx-twitter-dashboard/commit/3e4905079cc57fd7bb4a5ffc486acd906ca9c64a))
+
 ## [1.4.2](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.1...dashboard-v1.4.2) (2026-07-23)
 
 
