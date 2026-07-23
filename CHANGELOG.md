@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.2](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.1...dashboard-v1.4.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* **docker:** pass NODE_AUTH_TOKEN as build arg in compose.yml ([7df64af](https://github.com/rx-twitter/rx-twitter-dashboard/commit/7df64af835ab39457e5973d6b54d871afed9e0d7))
+* **docker:** pass NODE_AUTH_TOKEN as build arg in compose.yml ([2bf8fe2](https://github.com/rx-twitter/rx-twitter-dashboard/commit/2bf8fe26c99d07ac20285f2c4a02846c8e4a5415))
+
 ## [1.4.1](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.0...dashboard-v1.4.1) (2026-07-04)
 
 
