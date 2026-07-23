@@ -1,6 +1,7 @@
 import { defineMiddleware } from "astro:middleware";
 
 import { validateSession, getSessionCookieAttributes } from "./lib/auth";
+import { isCrossSiteFormRequest } from "./lib/origin-check";
 import { initializeApp } from "./startup";
 
 // セッションクッキー名
@@ -25,6 +26,13 @@ function addSecurityHeaders(response: Response): Response {
 export const onRequest = defineMiddleware(async (context, next) => {
   // 初期化完了を待機（初回リクエスト時のみブロック）
   await initPromise;
+
+  // CSRF（Origin）チェック: クロスサイトのフォーム送信を拒否する
+  if (isCrossSiteFormRequest(context.request, context.url)) {
+    return addSecurityHeaders(
+      new Response("Cross-site form submissions are forbidden", { status: 403 }),
+    );
+  }
 
   const sessionId = context.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
 
