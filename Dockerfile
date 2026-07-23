@@ -9,13 +9,11 @@ WORKDIR /app
 ARG NODE_AUTH_TOKEN
 
 # package.json をコピー（この層は package.json が変わらない限りキャッシュされる）
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 
 # GitHub Packages 認証設定（インストール後に削除）
 # hadolint ignore=DL3016
-RUN echo "@rx-twitter:registry=https://npm.pkg.github.com" >> .npmrc && \
-    echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> .npmrc && \
-    npm ci && \
+RUN npm ci && \
     rm -f .npmrc
 
 # ソースをコピーしてビルド
@@ -40,12 +38,11 @@ ARG NODE_AUTH_TOKEN
 USER root
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
+COPY .npmrc ./
 
 # drizzle-kit はマイグレーション実行に必要なので含める
 # hadolint ignore=DL3016
-RUN echo "@rx-twitter:registry=https://npm.pkg.github.com" >> .npmrc && \
-    echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> .npmrc && \
-    npm install --include=dev --omit=optional && \
+RUN npm install --include=dev --omit=optional && \
     rm -f .npmrc && \
     apk del .build-deps
 
