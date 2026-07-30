@@ -60,12 +60,10 @@ export function isCrossSiteFormRequest(request: Request, url: URL): boolean {
   allowedOrigins.add(url.origin);
   // プロキシが保持する実際の公開ホスト（nginx-proxy は Host をそのまま透過する）
   const forwardedHost =
-    firstHeaderValue(request.headers.get("x-forwarded-host")) ??
-    request.headers.get("host");
+    firstHeaderValue(request.headers.get("x-forwarded-host")) ?? request.headers.get("host");
   if (forwardedHost) {
     const forwardedProto =
-      firstHeaderValue(request.headers.get("x-forwarded-proto")) ??
-      url.protocol.replace(/:$/, "");
+      firstHeaderValue(request.headers.get("x-forwarded-proto")) ?? url.protocol.replace(/:$/, "");
     allowedOrigins.add(`${forwardedProto}://${forwardedHost}`);
   }
 

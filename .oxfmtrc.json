@@ -11,5 +11,12 @@
   "quoteProps": "as-needed",
   "sortImports": true,
   "sortPackageJson": true,
-  "ignorePatterns": ["dist/**", "coverage/**", ".astro/**"]
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    ".astro/**",
+    "drizzle/**",
+    "CHANGELOG.md",
+    ".github/agents/**"
+  ]
 }

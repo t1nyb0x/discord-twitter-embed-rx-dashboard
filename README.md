@@ -63,13 +63,13 @@ cp .env.compose.example .env
 
 **オプション**
 
-| 変数名                         | デフォルト値               | 説明                                           |
-| ------------------------------ | -------------------------- | ---------------------------------------------- |
-| `DATABASE_URL`                 | `file:./data/dashboard.db` | SQLite データベースパス                        |
-| `REDIS_URL`                    | `redis://redis:6379`       | Redis 接続 URL（Compose 環境では上書きされる） |
+| 変数名                         | デフォルト値               | 説明                                                                    |
+| ------------------------------ | -------------------------- | ----------------------------------------------------------------------- |
+| `DATABASE_URL`                 | `file:./data/dashboard.db` | SQLite データベースパス                                                 |
+| `REDIS_URL`                    | `redis://redis:6379`       | Redis 接続 URL（Compose 環境では上書きされる）                          |
 | `OWNER_DISCORD_ID`             | （未設定）                 | Bot の持ち主の Discord ユーザーID。設定するとお知らせ作成ページが使える |
-| `ORPHAN_CONFIG_RETENTION_DAYS` | `30`                       | 孤立設定の保持日数                             |
-| `AUDIT_LOG_RETENTION_DAYS`     | `90`                       | 監査ログの保持日数                             |
+| `ORPHAN_CONFIG_RETENTION_DAYS` | `30`                       | 孤立設定の保持日数                                                      |
+| `AUDIT_LOG_RETENTION_DAYS`     | `90`                       | 監査ログの保持日数                                                      |
 
 #### Compose 変数一覧（`.env`）
 

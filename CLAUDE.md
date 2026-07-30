@@ -45,17 +45,17 @@ Run a single test file: `npx vitest run tests/unit/lib/auth.test.ts`
 
 ### Key Modules
 
-| File | Responsibility |
-|------|---------------|
-| `src/middleware.ts` | Auth guards, security headers, session injection into `locals` |
-| `src/lib/auth.ts` | Session creation/validation, cookie attributes |
-| `src/lib/crypto.ts` | AES-256-GCM token encryption (scrypt key derivation) |
-| `src/lib/discord.ts` | Discord API wrapper |
-| `src/lib/owner.ts` | Bot owner check (`OWNER_DISCORD_ID` vs the user's Discord ID); fails closed |
+| File                         | Responsibility                                                                         |
+| ---------------------------- | -------------------------------------------------------------------------------------- |
+| `src/middleware.ts`          | Auth guards, security headers, session injection into `locals`                         |
+| `src/lib/auth.ts`            | Session creation/validation, cookie attributes                                         |
+| `src/lib/crypto.ts`          | AES-256-GCM token encryption (scrypt key derivation)                                   |
+| `src/lib/discord.ts`         | Discord API wrapper                                                                    |
+| `src/lib/owner.ts`           | Bot owner check (`OWNER_DISCORD_ID` vs the user's Discord ID); fails closed            |
 | `src/lib/announce-target.ts` | Announcement delivery target: request validation, DB columns ⇔ shared `AnnounceTarget` |
-| `src/lib/rate-limit.ts` | Lua-based atomic rate limiting (30 logins/min per IP) |
-| `src/lib/reseed.ts` | SQLite → Redis sync at startup |
-| `src/startup.ts` | Background jobs initialization |
+| `src/lib/rate-limit.ts`      | Lua-based atomic rate limiting (30 logins/min per IP)                                  |
+| `src/lib/reseed.ts`          | SQLite → Redis sync at startup                                                         |
+| `src/startup.ts`             | Background jobs initialization                                                         |
 
 ### API Routes
 

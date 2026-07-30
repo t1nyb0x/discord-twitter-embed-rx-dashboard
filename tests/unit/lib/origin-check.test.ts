@@ -3,10 +3,7 @@ import { describe, it, expect } from "vitest";
 import { isCrossSiteFormRequest } from "@/lib/origin-check";
 
 // テスト用の Request を組み立てるヘルパー
-function makeRequest(
-  method: string,
-  headers: Record<string, string> = {},
-): Request {
+function makeRequest(method: string, headers: Record<string, string> = {}): Request {
   return new Request("http://localhost:4321/api/auth/logout", {
     method,
     headers,
@@ -34,17 +31,16 @@ describe("isCrossSiteFormRequest", () => {
       expect(isCrossSiteFormRequest(req, LOCAL_URL)).toBe(false);
     });
 
-    it.each([
-      "application/x-www-form-urlencoded",
-      "multipart/form-data; boundary=x",
-      "text/plain",
-    ])("フォーム系 Content-Type %s は対象", (contentType) => {
-      const req = makeRequest("POST", {
-        "content-type": contentType,
-        origin: "https://evil.example",
-      });
-      expect(isCrossSiteFormRequest(req, LOCAL_URL)).toBe(true);
-    });
+    it.each(["application/x-www-form-urlencoded", "multipart/form-data; boundary=x", "text/plain"])(
+      "フォーム系 Content-Type %s は対象",
+      (contentType) => {
+        const req = makeRequest("POST", {
+          "content-type": contentType,
+          origin: "https://evil.example",
+        });
+        expect(isCrossSiteFormRequest(req, LOCAL_URL)).toBe(true);
+      },
+    );
 
     it("Content-Type なしの POST も対象", () => {
       const req = makeRequest("POST", { origin: "https://evil.example" });
