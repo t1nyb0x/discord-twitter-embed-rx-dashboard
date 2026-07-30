@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { parseAnnounceTarget, toAnnounceTarget } from "@/lib/announce-target";
+import {
+  formatAnnounceTargetLabel,
+  isSameAnnounceTarget,
+  parseAnnounceTarget,
+  toAnnounceTarget,
+} from "@/lib/announce-target";
 
 describe("parseAnnounceTarget", () => {
   it("null を未設定として受け付ける", () => {
@@ -121,5 +126,77 @@ describe("toAnnounceTarget", () => {
     expect(
       toAnnounceTarget({ announceTargetMode: "channel", announceTargetChannelId: null }),
     ).toBeNull();
+  });
+});
+
+describe("formatAnnounceTargetLabel", () => {
+  const resolve = (id: string) => (id === "333333333333333333" ? "# general" : id);
+
+  it("未設定を Bot 側のデフォルトとして表示する", () => {
+    expect(formatAnnounceTargetLabel(null)).toBe("未設定（オーナーへ DM）");
+  });
+
+  it("dm を表示する", () => {
+    expect(formatAnnounceTargetLabel({ mode: "dm" })).toBe("オーナーへ DM");
+  });
+
+  it("dm のフォールバック先を併記する", () => {
+    expect(
+      formatAnnounceTargetLabel({ mode: "dm", channelId: "333333333333333333" }, resolve),
+    ).toBe("オーナーへ DM（フォールバック: # general）");
+  });
+
+  it("channel を表示する", () => {
+    expect(
+      formatAnnounceTargetLabel({ mode: "channel", channelId: "333333333333333333" }, resolve),
+    ).toBe("# general へ投稿");
+  });
+
+  it("解決できないチャンネルは ID をそのまま表示する", () => {
+    expect(formatAnnounceTargetLabel({ mode: "channel", channelId: "999999999999999999" })).toBe(
+      "999999999999999999 へ投稿",
+    );
+  });
+});
+
+describe("isSameAnnounceTarget", () => {
+  it("どちらも未設定なら同一とみなす", () => {
+    expect(isSameAnnounceTarget(null, null)).toBe(true);
+    expect(isSameAnnounceTarget(undefined, null)).toBe(true);
+  });
+
+  it("未設定と dm を区別する", () => {
+    expect(isSameAnnounceTarget(null, { mode: "dm" })).toBe(false);
+  });
+
+  it("mode の違いを検出する", () => {
+    expect(
+      isSameAnnounceTarget(
+        { mode: "dm", channelId: "333333333333333333" },
+        { mode: "channel", channelId: "333333333333333333" },
+      ),
+    ).toBe(false);
+  });
+
+  it("channelId の違いを検出する", () => {
+    expect(
+      isSameAnnounceTarget(
+        { mode: "channel", channelId: "333333333333333333" },
+        { mode: "channel", channelId: "444444444444444444" },
+      ),
+    ).toBe(false);
+  });
+
+  it("同じ内容なら同一とみなす", () => {
+    expect(
+      isSameAnnounceTarget(
+        { mode: "channel", channelId: "333333333333333333" },
+        { mode: "channel", channelId: "333333333333333333" },
+      ),
+    ).toBe(true);
+  });
+
+  it("channelId の未指定と空を同一とみなす", () => {
+    expect(isSameAnnounceTarget({ mode: "dm" }, { mode: "dm", channelId: "" })).toBe(true);
   });
 });

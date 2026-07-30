@@ -94,3 +94,43 @@ export function toAnnounceTarget(columns: AnnounceTargetColumns): AnnounceTarget
     ? { mode: "dm", channelId: announceTargetChannelId }
     : { mode: "dm" };
 }
+
+/**
+ * 配信先を人が読める表記にする（監査ログ・設定画面の表示用）。
+ *
+ * @param target 配信先。null / undefined は未設定
+ * @param resolveChannelName チャンネルIDを表示名に解決する関数。省略時はIDをそのまま使う
+ */
+export function formatAnnounceTargetLabel(
+  target: AnnounceTarget | null | undefined,
+  resolveChannelName: (channelId: string) => string = (channelId) => channelId,
+): string {
+  if (!target) {
+    return "未設定（オーナーへ DM）";
+  }
+
+  if (target.mode === "channel") {
+    return target.channelId
+      ? `${resolveChannelName(target.channelId)} へ投稿`
+      : "未設定（オーナーへ DM）";
+  }
+
+  return target.channelId
+    ? `オーナーへ DM（フォールバック: ${resolveChannelName(target.channelId)}）`
+    : "オーナーへ DM";
+}
+
+/**
+ * 配信先が同一かを判定する（監査ログの差分検出用）。
+ * channelId の未指定と空文字は同じものとして扱う。
+ */
+export function isSameAnnounceTarget(
+  a: AnnounceTarget | null | undefined,
+  b: AnnounceTarget | null | undefined,
+): boolean {
+  if (!a || !b) {
+    return !a && !b;
+  }
+
+  return a.mode === b.mode && (a.channelId || "") === (b.channelId || "");
+}
