@@ -2,10 +2,14 @@ import { defineMiddleware } from "astro:middleware";
 
 import { validateSession, getSessionCookieAttributes } from "./lib/auth";
 import { isCrossSiteFormRequest } from "./lib/origin-check";
+import { isOwner } from "./lib/owner";
 import { initializeApp } from "./startup";
 
 // セッションクッキー名
 const SESSION_COOKIE_NAME = "session";
+
+// Bot の持ち主のみがアクセスできるページ
+const OWNER_ONLY_PATHS = ["/dashboard/announcements"];
 
 // モジュール読み込み時（サーバー起動時）に初期化を開始
 const initPromise = initializeApp();
@@ -86,6 +90,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   context.locals.url = context.url;
+
+  // オーナー専用ページ: 存在を伏せるため 404 を返す
+  const isOwnerOnlyPath = OWNER_ONLY_PATHS.some((path) => context.url.pathname.startsWith(path));
+  if (isOwnerOnlyPath && !isOwner(context.locals.user)) {
+    return addSecurityHeaders(new Response("Not Found", { status: 404 }));
+  }
 
   return addSecurityHeaders(await next());
 });
