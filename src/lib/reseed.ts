@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { toAnnounceTarget } from "./announce-target";
 import { db } from "./db";
 import { guildConfigs, channelWhitelist } from "./db/schema";
 import { createLogger } from "./logger";
@@ -148,6 +149,12 @@ async function reseedSingleGuild(guildId: string): Promise<void> {
     .from(channelWhitelist)
     .where(eq(channelWhitelist.guildId, guildId));
 
+  // お知らせ配信先は未設定なら書き込まない（Bot 側のデフォルト解決に委ねる）
+  const announceTarget = toAnnounceTarget({
+    announceTargetMode: config[0].announceTargetMode ?? null,
+    announceTargetChannelId: config[0].announceTargetChannelId ?? null,
+  });
+
   const configData = {
     guildId: config[0].guildId,
     allowAllChannels: config[0].allowAllChannels,
@@ -155,6 +162,7 @@ async function reseedSingleGuild(guildId: string): Promise<void> {
     version: config[0].version,
     updatedAt: config[0].updatedAt,
     maxUrlsPerMessage: config[0].maxUrlsPerMessage ?? undefined,
+    ...(announceTarget ? { announceTarget } : {}),
   };
 
   // Redisに保存（TTLなし = 永続）
