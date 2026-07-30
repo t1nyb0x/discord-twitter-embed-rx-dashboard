@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { toAnnounceTarget } from "@/lib/announce-target";
 import { db } from "@/lib/db";
 import {
   channelWhitelist,
@@ -41,9 +42,15 @@ export type SaveGuildConfigParams = {
   allowAllChannels: boolean;
   whitelistedChannelIds: string[];
   maxUrlsPerMessage: number | null;
+  announceTargetMode: string | null;
+  announceTargetChannelId: string | null;
   currentConfig: Pick<
     GuildConfig,
-    "version" | "allowAllChannels" | "maxUrlsPerMessage"
+    | "version"
+    | "allowAllChannels"
+    | "maxUrlsPerMessage"
+    | "announceTargetMode"
+    | "announceTargetChannelId"
   >;
   previousChannelIds: string[];
 };
@@ -55,6 +62,8 @@ export function saveGuildConfig(params: SaveGuildConfigParams): number {
     allowAllChannels,
     whitelistedChannelIds,
     maxUrlsPerMessage,
+    announceTargetMode,
+    announceTargetChannelId,
     currentConfig,
     previousChannelIds,
   } = params;
@@ -64,7 +73,15 @@ export function saveGuildConfig(params: SaveGuildConfigParams): number {
 
   db.transaction((tx) => {
     tx.update(guildConfigs)
-      .set({ allowAllChannels, version: nextVersion, updatedAt, updatedBy: userId, maxUrlsPerMessage })
+      .set({
+        allowAllChannels,
+        version: nextVersion,
+        updatedAt,
+        updatedBy: userId,
+        maxUrlsPerMessage,
+        announceTargetMode,
+        announceTargetChannelId,
+      })
       .where(eq(guildConfigs.guildId, guildId))
       .run();
 
@@ -88,8 +105,17 @@ export function saveGuildConfig(params: SaveGuildConfigParams): number {
             allowAllChannels: currentConfig.allowAllChannels,
             whitelistedChannelIds: previousChannelIds,
             maxUrlsPerMessage: currentConfig.maxUrlsPerMessage ?? null,
+            announceTarget: toAnnounceTarget({
+              announceTargetMode: currentConfig.announceTargetMode ?? null,
+              announceTargetChannelId: currentConfig.announceTargetChannelId ?? null,
+            }),
           },
-          current: { allowAllChannels, whitelistedChannelIds, maxUrlsPerMessage },
+          current: {
+            allowAllChannels,
+            whitelistedChannelIds,
+            maxUrlsPerMessage,
+            announceTarget: toAnnounceTarget({ announceTargetMode, announceTargetChannelId }),
+          },
         }),
       })
       .run();

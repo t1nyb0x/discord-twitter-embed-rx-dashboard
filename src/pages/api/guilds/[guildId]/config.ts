@@ -1,6 +1,7 @@
 import { MAX_URLS_PER_MESSAGE_LIMIT } from "@rx-twitter/shared";
 import type { APIRoute } from "astro";
 
+import { parseAnnounceTarget, toAnnounceTarget } from "@/lib/announce-target";
 import { createApiError, createApiResponseWithHeaders, getAccessToken } from "@/lib/api-helpers";
 import {
   createDefaultGuildConfig,
@@ -108,6 +109,10 @@ export const GET: APIRoute = async ({ params, locals }) => {
         version: config.version,
         updatedAt: config.updatedAt,
         maxUrlsPerMessage: config.maxUrlsPerMessage ?? null,
+        announceTarget: toAnnounceTarget({
+          announceTargetMode: config.announceTargetMode ?? null,
+          announceTargetChannelId: config.announceTargetChannelId ?? null,
+        }),
       },
       200,
       {
@@ -191,7 +196,7 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
 
     // リクエストボディを取得
     const body = await request.json();
-    const { allowAllChannels, whitelistedChannelIds, maxUrlsPerMessage } = body;
+    const { allowAllChannels, whitelistedChannelIds, maxUrlsPerMessage, announceTarget } = body;
 
     if (typeof allowAllChannels !== "boolean") {
       return createApiError(
@@ -229,6 +234,13 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
         400,
       );
     }
+
+    // バリデーション: お知らせ配信先（未設定は Bot 側のデフォルトに委ねる）
+    const announceTargetResult = parseAnnounceTarget(announceTarget);
+    if (!announceTargetResult.ok) {
+      return createApiError("INVALID_ANNOUNCE_TARGET", announceTargetResult.error, 400);
+    }
+    const announceTargetColumns = announceTargetResult.value;
 
     // バリデーション: whitelist 上限 500 件
     if (whitelistedChannelIds.length > 500) {
@@ -287,6 +299,8 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
         allowAllChannels,
         whitelistedChannelIds,
         maxUrlsPerMessage: normalizedMaxUrls,
+        announceTargetMode: announceTargetColumns.announceTargetMode,
+        announceTargetChannelId: announceTargetColumns.announceTargetChannelId,
         currentConfig,
         previousChannelIds,
       });
@@ -299,6 +313,8 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
     }
 
     // Redis に保存
+    // announceTarget は未設定なら書き込まない（Bot 側のデフォルト解決に委ねる）
+    const normalizedAnnounceTarget = toAnnounceTarget(announceTargetColumns);
     const newConfig = {
       guildId,
       allowAllChannels,
@@ -307,6 +323,7 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
       updatedAt: new Date().toISOString(),
       updatedBy: user.id,
       maxUrlsPerMessage: normalizedMaxUrls,
+      ...(normalizedAnnounceTarget ? { announceTarget: normalizedAnnounceTarget } : {}),
     };
 
     try {
@@ -323,7 +340,7 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
           error: {
             code: "REDIS_SAVE_FAILED",
             message:
-              "設定は保存されましたが、Redis への反映に失敗しました。数分後に自動で反映されます。",
+              "設定は保存されましたが、Redis への反映に失敗しました。最大10分後に自動で反映されます。",
             savedVersion: newConfig.version,
             guildId,
           },

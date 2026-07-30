@@ -15,6 +15,13 @@
       "when": 1778324124535,
       "tag": "0001_shiny_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785417964126,
+      "tag": "0002_common_stark_industries",
+      "breakpoints": true
     }
   ]
 }

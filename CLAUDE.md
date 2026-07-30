@@ -51,6 +51,8 @@ Run a single test file: `npx vitest run tests/unit/lib/auth.test.ts`
 | `src/lib/auth.ts` | Session creation/validation, cookie attributes |
 | `src/lib/crypto.ts` | AES-256-GCM token encryption (scrypt key derivation) |
 | `src/lib/discord.ts` | Discord API wrapper |
+| `src/lib/owner.ts` | Bot owner check (`OWNER_DISCORD_ID` vs the user's Discord ID); fails closed |
+| `src/lib/announce-target.ts` | Announcement delivery target: request validation, DB columns ⇔ shared `AnnounceTarget` |
 | `src/lib/rate-limit.ts` | Lua-based atomic rate limiting (30 logins/min per IP) |
 | `src/lib/reseed.ts` | SQLite → Redis sync at startup |
 | `src/startup.ts` | Background jobs initialization |
@@ -60,6 +62,7 @@ Run a single test file: `npx vitest run tests/unit/lib/auth.test.ts`
 - `GET/POST /api/guilds/[guildId]/config` — Main guild config CRUD; reads from Redis cache, writes through to SQLite + Redis
 - `GET /api/guilds/[guildId]/audit-logs` — Paginated audit log query
 - `GET /api/guilds/[guildId]/channels` — Discord channel list (proxied through server)
+- `POST /api/announcements` — Owner-only; validates with `validateAnnouncement()` and `XADD`s to the announcement stream (Bot consumes it; see the Bot repo's ADR 0003)
 - `POST /api/auth/discord/login` — Rate-limited OAuth initiation
 - `GET /api/auth/discord/callback` — OAuth callback, sets session cookie
 
@@ -76,4 +79,4 @@ App secrets go in `.env.app` (separate from `.env` used by Docker Compose).
 
 Required: `DISCORD_OAUTH2_CLIENT_ID`, `DISCORD_OAUTH2_CLIENT_SECRET`, `DISCORD_OAUTH2_REDIRECT_URI`, `SESSION_SECRET` (32+ chars), `ENCRYPTION_SALT` (16+ chars)
 
-Optional: `DATABASE_URL` (default `file:./data/dashboard.db`), `REDIS_URL` (default `redis://redis:6379`), `ORPHAN_CONFIG_RETENTION_DAYS` (30), `AUDIT_LOG_RETENTION_DAYS` (90)
+Optional: `DATABASE_URL` (default `file:./data/dashboard.db`), `REDIS_URL` (default `redis://redis:6379`), `OWNER_DISCORD_ID` (Discord user ID of the bot owner; gates `/dashboard/announcements` — unset means nobody is owner), `ORPHAN_CONFIG_RETENTION_DAYS` (30), `AUDIT_LOG_RETENTION_DAYS` (90)

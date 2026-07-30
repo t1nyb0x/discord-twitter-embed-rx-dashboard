@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { toAnnounceTarget } from "./announce-target";
 import { db } from "./db";
 import { guildConfigs, channelWhitelist } from "./db/schema";
 import { createLogger } from "./logger";
@@ -10,26 +11,56 @@ const logger = createLogger("Reseed");
 /**
  * P1: スキーマバージョン定義
  * Redis データ構造が変更された場合はこれをインクリメント
+ *
+ * 3: ホワイトリストのキー名を whitelist から whitelistedChannelIds に修正した。
+ *    旧形式で書かれた既存エントリを一掃するため全再シードが必要。
  */
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 const SCHEMA_VERSION_KEY = "app:config:schema_version";
 
-/**
- * P1対応: 部分キー欠落チェック
- * 各ギルドの config キーが存在するか確認
- */
-async function checkForMissingConfigs(guildIds: string[]): Promise<string[]> {
-  const missing: string[] = [];
+function configKey(guildId: string): string {
+  return `app:guild:${guildId}:config`;
+}
 
-  for (const guildId of guildIds) {
-    const key = `app:guild:${guildId}:config`;
-    const exists = await redis.exists(key);
-    if (!exists) {
-      missing.push(guildId);
+type ConfigVersionRow = { guildId: string; version: number };
+
+/**
+ * Redis の設定が SQLite と乖離しているか判定する。
+ *
+ * SQLite が source of truth なので、欠落・破損・version 不一致はすべて
+ * 「要再シード」として扱う。キーの存在だけを見ると、Redis への書き込みに
+ * 失敗して古い設定が残ったケースを永久に取りこぼす。
+ */
+export function isRedisConfigStale(rawRedisValue: string | null, sqliteVersion: number): boolean {
+  if (!rawRedisValue) {
+    return true;
+  }
+
+  try {
+    const parsed = JSON.parse(rawRedisValue);
+    if (typeof parsed?.version !== "number") {
+      return true;
+    }
+    return parsed.version !== sqliteVersion;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * P1対応: Redis 側が欠落・破損・古いギルドを洗い出す
+ */
+async function findOutdatedConfigs(configs: ConfigVersionRow[]): Promise<string[]> {
+  const outdated: string[] = [];
+
+  for (const config of configs) {
+    const raw = await redis.get(configKey(config.guildId));
+    if (isRedisConfigStale(raw, config.version)) {
+      outdated.push(config.guildId);
     }
   }
 
-  return missing;
+  return outdated;
 }
 
 /**
@@ -56,23 +87,22 @@ export async function reseedRedisFromSQLite(): Promise<void> {
       return;
     }
 
-    // P1: 部分キー欠落チェック
+    // P1: 欠落・破損・version 不一致のチェック
     const allConfigs = await db.select().from(guildConfigs);
-    const allGuildIds = allConfigs.map((c) => c.guildId);
 
-    if (allGuildIds.length === 0) {
+    if (allConfigs.length === 0) {
       logger.info("No configs found in SQLite");
       return;
     }
 
-    const missingGuildIds = await checkForMissingConfigs(allGuildIds);
+    const outdatedGuildIds = await findOutdatedConfigs(allConfigs);
 
-    if (missingGuildIds.length > 0) {
-      logger.info("Found missing configs, reseeding them", { count: missingGuildIds.length });
-      await reseedSpecificGuilds(missingGuildIds);
-      logger.info("Partial reseed completed", { count: missingGuildIds.length });
+    if (outdatedGuildIds.length > 0) {
+      logger.info("Found outdated configs, reseeding them", { count: outdatedGuildIds.length });
+      await reseedSpecificGuilds(outdatedGuildIds);
+      logger.info("Partial reseed completed", { count: outdatedGuildIds.length });
     } else {
-      logger.info("All configs are present in Redis, no reseed needed");
+      logger.info("All configs are up to date in Redis, no reseed needed");
     }
   } catch (err) {
     logger.error("Error during reseed", {
@@ -148,18 +178,25 @@ async function reseedSingleGuild(guildId: string): Promise<void> {
     .from(channelWhitelist)
     .where(eq(channelWhitelist.guildId, guildId));
 
+  // お知らせ配信先は未設定なら書き込まない（Bot 側のデフォルト解決に委ねる）
+  const announceTarget = toAnnounceTarget({
+    announceTargetMode: config[0].announceTargetMode ?? null,
+    announceTargetChannelId: config[0].announceTargetChannelId ?? null,
+  });
+
+  // キー名は共有型 GuildConfig に合わせる。Bot は whitelistedChannelIds を読む
   const configData = {
     guildId: config[0].guildId,
     allowAllChannels: config[0].allowAllChannels,
-    whitelist: whitelist.map((w) => w.channelId),
+    whitelistedChannelIds: whitelist.map((w) => w.channelId),
     version: config[0].version,
     updatedAt: config[0].updatedAt,
     maxUrlsPerMessage: config[0].maxUrlsPerMessage ?? undefined,
+    ...(announceTarget ? { announceTarget } : {}),
   };
 
   // Redisに保存（TTLなし = 永続）
-  const key = `app:guild:${guildId}:config`;
-  await redis.set(key, JSON.stringify(configData));
+  await redis.set(configKey(guildId), JSON.stringify(configData));
 }
 
 /**
@@ -174,47 +211,53 @@ export async function reconcileConfigs(joinedGuildIds: string[]): Promise<void> 
   let reconciledCount = 0;
 
   for (const guildId of joinedGuildIds) {
-    const key = `app:guild:${guildId}:config`;
-    const exists = await redis.exists(key);
+    const raw = await redis.get(configKey(guildId));
 
-    if (!exists) {
-      // Redis に存在しない場合、SQLite から取得して補完
-      const config = await db
-        .select()
-        .from(guildConfigs)
-        .where(eq(guildConfigs.guildId, guildId))
-        .limit(1);
+    const config = await db
+      .select()
+      .from(guildConfigs)
+      .where(eq(guildConfigs.guildId, guildId))
+      .limit(1);
 
-      if (config.length > 0) {
-        // 既存の設定があればそれを使用
-        await reseedSingleGuild(guildId);
-        logger.info("Restored config for guild", { guildId });
-        reconciledCount++;
-      } else {
-        // 初回参加の場合、デフォルト設定を作成
-        const defaultConfig = {
-          guildId,
-          allowAllChannels: true, // デフォルトは全チャンネル許可
-          whitelist: [],
-          version: 1,
-          updatedAt: new Date().toISOString(),
-        };
-
-        await redis.set(key, JSON.stringify(defaultConfig));
-
-        // SQLite にも保存（システムによる自動作成）
-        await db.insert(guildConfigs).values({
-          guildId,
-          allowAllChannels: true,
-          version: 1,
-          updatedAt: new Date().toISOString(),
-          updatedBy: "system", // 自動作成時はシステムユーザー
-        });
-
-        logger.info("Created default config for new guild", { guildId });
-        reconciledCount++;
+    if (config.length === 0) {
+      // SQLite に無いが Redis にはある場合は、素性が分からないので触らない
+      if (raw) {
+        continue;
       }
+
+      // 初回参加の場合、デフォルト設定を作成
+      const defaultConfig = {
+        guildId,
+        allowAllChannels: true, // デフォルトは全チャンネル許可
+        whitelistedChannelIds: [],
+        version: 1,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await redis.set(configKey(guildId), JSON.stringify(defaultConfig));
+
+      // SQLite にも保存（システムによる自動作成）
+      await db.insert(guildConfigs).values({
+        guildId,
+        allowAllChannels: true,
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        updatedBy: "system", // 自動作成時はシステムユーザー
+      });
+
+      logger.info("Created default config for new guild", { guildId });
+      reconciledCount++;
+      continue;
     }
+
+    // 欠落だけでなく、Redis への書き込み失敗で古いまま残った設定も直す
+    if (!isRedisConfigStale(raw, config[0].version)) {
+      continue;
+    }
+
+    await reseedSingleGuild(guildId);
+    logger.info("Restored config for guild", { guildId });
+    reconciledCount++;
   }
 
   if (reconciledCount > 0) {

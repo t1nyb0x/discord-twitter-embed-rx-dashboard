@@ -1,5 +1,15 @@
+import { type AnnounceTarget } from "@rx-twitter/shared";
 import { type FunctionComponent } from "preact";
 import { useState, useEffect } from "preact/hooks";
+
+import { formatAnnounceTargetLabel, isSameAnnounceTarget } from "@/lib/announce-target";
+
+interface ConfigSnapshot {
+  allowAllChannels: boolean;
+  whitelistedChannelIds: string[];
+  maxUrlsPerMessage?: number | null;
+  announceTarget?: AnnounceTarget | null;
+}
 
 interface AuditLogEntry {
   id: number;
@@ -10,16 +20,8 @@ interface AuditLogEntry {
   oldVersion: number | null;
   newVersion: number;
   changes: {
-    previous?: {
-      allowAllChannels: boolean;
-      whitelistedChannelIds: string[];
-      maxUrlsPerMessage?: number | null;
-    };
-    current?: {
-      allowAllChannels: boolean;
-      whitelistedChannelIds: string[];
-      maxUrlsPerMessage?: number | null;
-    };
+    previous?: ConfigSnapshot;
+    current?: ConfigSnapshot;
   };
   createdAt: string;
 }
@@ -148,6 +150,15 @@ export const AuditLogs: FunctionComponent<AuditLogsProps> = ({
       changes.push(`URL上限: ${prevLabel} → ${currLabel}`);
     }
 
+    if (!isSameAnnounceTarget(prev.announceTarget, curr.announceTarget)) {
+      changes.push(
+        `お知らせ配信先: ${formatAnnounceTargetLabel(
+          prev.announceTarget,
+          formatChannelName,
+        )} → ${formatAnnounceTargetLabel(curr.announceTarget, formatChannelName)}`,
+      );
+    }
+
     return changes.length > 0 ? changes.join(", ") : "変更なし";
   };
 
@@ -168,7 +179,8 @@ export const AuditLogs: FunctionComponent<AuditLogsProps> = ({
       prev.allowAllChannels !== curr.allowAllChannels ||
       added.length > 0 ||
       removed.length > 0 ||
-      prevMax !== currMax
+      prevMax !== currMax ||
+      !isSameAnnounceTarget(prev.announceTarget, curr.announceTarget)
     );
   };
 
@@ -192,19 +204,14 @@ export const AuditLogs: FunctionComponent<AuditLogsProps> = ({
         {prev.allowAllChannels !== curr.allowAllChannels && (
           <div class="audit-detail-section">
             <span class="audit-detail-label">全チャンネル許可</span>
-            <span
-              class={`audit-badge ${curr.allowAllChannels ? "badge-on" : "badge-off"}`}
-            >
-              {prev.allowAllChannels ? "ON" : "OFF"} →{" "}
-              {curr.allowAllChannels ? "ON" : "OFF"}
+            <span class={`audit-badge ${curr.allowAllChannels ? "badge-on" : "badge-off"}`}>
+              {prev.allowAllChannels ? "ON" : "OFF"} → {curr.allowAllChannels ? "ON" : "OFF"}
             </span>
           </div>
         )}
         {added.length > 0 && (
           <div class="audit-detail-section">
-            <span class="audit-detail-label">
-              追加されたチャンネル ({added.length}件)
-            </span>
+            <span class="audit-detail-label">追加されたチャンネル ({added.length}件)</span>
             <ul class="audit-channel-list">
               {added.map((id) => (
                 <li key={id} class="channel-added">
@@ -216,9 +223,7 @@ export const AuditLogs: FunctionComponent<AuditLogsProps> = ({
         )}
         {removed.length > 0 && (
           <div class="audit-detail-section">
-            <span class="audit-detail-label">
-              削除されたチャンネル ({removed.length}件)
-            </span>
+            <span class="audit-detail-label">削除されたチャンネル ({removed.length}件)</span>
             <ul class="audit-channel-list">
               {removed.map((id) => (
                 <li key={id} class="channel-removed">
@@ -243,6 +248,18 @@ export const AuditLogs: FunctionComponent<AuditLogsProps> = ({
             </div>
           );
         })()}
+        {!isSameAnnounceTarget(prev.announceTarget, curr.announceTarget) && (
+          <div class="audit-detail-section">
+            <span class="audit-detail-label">お知らせ配信先</span>
+            <span class="audit-badge badge-off">
+              {formatAnnounceTargetLabel(prev.announceTarget, formatChannelName)}
+            </span>
+            {" → "}
+            <span class="audit-badge badge-on">
+              {formatAnnounceTargetLabel(curr.announceTarget, formatChannelName)}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
@@ -301,25 +318,17 @@ export const AuditLogs: FunctionComponent<AuditLogsProps> = ({
                   <tr
                     key={entry.id}
                     class={`${expandable ? "audit-row-expandable" : ""} ${isExpanded ? "audit-row-expanded" : ""}`}
-                    onClick={() =>
-                      expandable && setExpandedId(isExpanded ? null : entry.id)
-                    }
+                    onClick={() => expandable && setExpandedId(isExpanded ? null : entry.id)}
                   >
                     <td class="audit-log-no">{no}</td>
                     <td class="audit-log-date">
                       {expandable && (
-                        <span
-                          class={`audit-expand-icon ${isExpanded ? "open" : ""}`}
-                        >
-                          ▶
-                        </span>
+                        <span class={`audit-expand-icon ${isExpanded ? "open" : ""}`}>▶</span>
                       )}
                       {formatDate(entry.createdAt)}
                     </td>
                     <td class="audit-log-changes">{getChangeSummary(entry)}</td>
-                    <td class="audit-log-user">
-                      {entry.username || `User ${entry.userId}`}
-                    </td>
+                    <td class="audit-log-user">{entry.username || `User ${entry.userId}`}</td>
                   </tr>
                   {isExpanded && (
                     <tr key={`${entry.id}-detail`} class="audit-detail-row">
