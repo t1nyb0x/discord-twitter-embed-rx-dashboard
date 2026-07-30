@@ -73,6 +73,9 @@ jobs:
       - name: Run OxLint
         run: npm run lint
 
+      - name: Check formatting
+        run: npm run format:check
+
   test:
     timeout-minutes: 15
     runs-on: ubuntu-latest
