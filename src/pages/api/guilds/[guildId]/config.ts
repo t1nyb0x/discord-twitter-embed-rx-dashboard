@@ -340,7 +340,7 @@ export const PUT: APIRoute = async ({ params, locals, request }) => {
           error: {
             code: "REDIS_SAVE_FAILED",
             message:
-              "設定は保存されましたが、Redis への反映に失敗しました。数分後に自動で反映されます。",
+              "設定は保存されましたが、Redis への反映に失敗しました。最大10分後に自動で反映されます。",
             savedVersion: newConfig.version,
             guildId,
           },
