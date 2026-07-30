@@ -43,7 +43,10 @@ export function createAuthorizationURL(state: string, codeVerifier: string): URL
 /**
  * 認証コードをアクセストークンに交換
  */
-export async function validateAuthorizationCode(code: string, codeVerifier: string): Promise<{
+export async function validateAuthorizationCode(
+  code: string,
+  codeVerifier: string,
+): Promise<{
   accessToken: string;
   expiresIn: number;
 }> {
