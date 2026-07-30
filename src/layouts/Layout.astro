@@ -1,4 +1,6 @@
 ---
+import { isOwner } from '../lib/owner';
+
 interface Props {
   title: string;
 }
@@ -108,6 +110,7 @@ const user = Astro.locals.user;
           {user ? (
             <>
               <a href="/dashboard">ダッシュボード</a>
+              {isOwner(user) && <a href="/dashboard/announcements">お知らせ</a>}
               <form method="POST" action="/api/auth/logout" style="display: inline;">
                 <button type="submit" class="btn btn-secondary">ログアウト</button>
               </form>
