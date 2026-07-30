@@ -115,6 +115,41 @@ if (!guildId) {
         </div>
       </div>
 
+      <div class="config-section">
+        <div class="section-header">
+          <h2>お知らせの配信先</h2>
+        </div>
+        <p class="section-note">
+          運営からのお知らせをこのサーバーのどこへ届けるかを選べます。
+          未設定の場合はサーバーオーナーへの DM になります。
+        </p>
+        <div class="announce-target-options">
+          <label class="radio-option">
+            <input type="radio" name="announce-target-mode" value="unset" checked />
+            <span>未設定（オーナーへの DM）</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="announce-target-mode" value="dm" />
+            <span>サーバーオーナーへ DM</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="announce-target-mode" value="channel" />
+            <span>特定のチャンネルへ投稿</span>
+          </label>
+        </div>
+        <div class="announce-channel-group">
+          <label for="announce-target-channel" class="announce-channel-label">
+            <span id="announce-channel-label-text">フォールバック用チャンネル（任意）</span>
+          </label>
+          <select id="announce-target-channel" class="announce-channel-select">
+            <option value="">選択しない</option>
+          </select>
+          <p class="section-note" id="announce-channel-note">
+            DM が拒否されている場合の代替の投稿先として使われます。
+          </p>
+        </div>
+      </div>
+
       <div class="save-section">
         <button id="save-btn" class="primary-button" disabled>
           💾 設定を保存
@@ -509,6 +544,49 @@ if (!guildId) {
       border-color: #5865f2;
       box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
     }
+
+    .announce-target-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: #444;
+    }
+
+    .announce-channel-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .announce-channel-label {
+      font-size: 0.95rem;
+      color: #444;
+    }
+
+    .announce-channel-select {
+      width: 100%;
+      max-width: 24rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: #fff;
+    }
+
+    .announce-channel-select:focus {
+      outline: none;
+      border-color: #5865f2;
+      box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+    }
   </style>
 
   <script define:vars={{ guildId }}>
@@ -518,6 +596,7 @@ if (!guildId) {
     let initialWhitelistedIds = [];
     let availableChannels = [];
     let manuallyAddedChannels = new Set();
+    let initialAnnounceTargetKey = null;
 
     async function loadConfig() {
       try {
@@ -555,6 +634,8 @@ if (!guildId) {
           maxUrlsInput.addEventListener('change', checkForChanges);
         }
 
+        applyAnnounceTarget(currentConfig.announceTarget || null);
+
         updateUI();
         await loadChannels();
         checkForChanges();
@@ -588,6 +669,7 @@ if (!guildId) {
 
         const data = await response.json();
         availableChannels = data.data?.channels || data.channels || [];
+        renderAnnounceChannelOptions();
 
         channelsLoading.style.display = 'none';
 
@@ -643,6 +725,110 @@ if (!guildId) {
       });
 
       updateSelectedCount();
+    }
+
+    // --- お知らせ配信先 ---
+
+    let selectedAnnounceChannelId = '';
+
+    function announceTargetKey(target) {
+      if (!target) return 'unset';
+      return `${target.mode}:${target.channelId || ''}`;
+    }
+
+    function getSelectedAnnounceMode() {
+      const checked = document.querySelector('input[name="announce-target-mode"]:checked');
+      return checked ? checked.value : 'unset';
+    }
+
+    function getAnnounceTargetFromUI() {
+      const mode = getSelectedAnnounceMode();
+      if (mode === 'unset') return null;
+
+      const select = document.getElementById('announce-target-channel');
+      const channelId = select ? select.value : '';
+
+      if (mode === 'channel') {
+        return channelId ? { mode: 'channel', channelId } : { mode: 'channel' };
+      }
+      return channelId ? { mode: 'dm', channelId } : { mode: 'dm' };
+    }
+
+    function renderAnnounceChannelOptions() {
+      const select = document.getElementById('announce-target-channel');
+      if (!select) return;
+
+      select.innerHTML = '';
+
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = '選択しない';
+      select.appendChild(emptyOption);
+
+      const ids = new Set();
+      availableChannels.forEach(channel => {
+        ids.add(channel.id);
+        const option = document.createElement('option');
+        option.value = channel.id;
+        option.textContent = `# ${channel.name}`;
+        select.appendChild(option);
+      });
+
+      // 一覧に無いチャンネル（権限や取得失敗で見えないもの）が保存済みの場合も選択を保持する
+      if (selectedAnnounceChannelId && !ids.has(selectedAnnounceChannelId)) {
+        const option = document.createElement('option');
+        option.value = selectedAnnounceChannelId;
+        option.textContent = `ID: ${selectedAnnounceChannelId}`;
+        select.appendChild(option);
+      }
+
+      select.value = selectedAnnounceChannelId;
+    }
+
+    function updateAnnounceTargetUI() {
+      const mode = getSelectedAnnounceMode();
+      const group = document.querySelector('.announce-channel-group');
+      const labelText = document.getElementById('announce-channel-label-text');
+      const note = document.getElementById('announce-channel-note');
+
+      if (group) {
+        group.style.display = mode === 'unset' ? 'none' : 'flex';
+      }
+
+      if (mode === 'channel') {
+        if (labelText) labelText.textContent = '投稿先チャンネル（必須）';
+        if (note) note.textContent = '選んだチャンネルにお知らせが投稿されます。';
+      } else {
+        if (labelText) labelText.textContent = 'フォールバック用チャンネル（任意）';
+        if (note) note.textContent = 'DM が拒否されている場合の代替の投稿先として使われます。';
+      }
+    }
+
+    function applyAnnounceTarget(target) {
+      initialAnnounceTargetKey = announceTargetKey(target);
+      selectedAnnounceChannelId = target?.channelId || '';
+
+      const mode = target ? target.mode : 'unset';
+      const radio = document.querySelector(`input[name="announce-target-mode"][value="${mode}"]`);
+      if (radio) radio.checked = true;
+
+      renderAnnounceChannelOptions();
+      updateAnnounceTargetUI();
+    }
+
+    document.querySelectorAll('input[name="announce-target-mode"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        updateAnnounceTargetUI();
+        checkForChanges();
+      });
+    });
+
+    const announceChannelSelect = document.getElementById('announce-target-channel');
+    if (announceChannelSelect) {
+      announceChannelSelect.addEventListener('change', () => {
+        selectedAnnounceChannelId = announceChannelSelect.value;
+        checkForChanges();
+      });
     }
 
     function updateUI() {
@@ -721,6 +907,10 @@ if (!guildId) {
         const inputVal = maxUrlsInput && maxUrlsInput.value !== '' ? parseInt(maxUrlsInput.value, 10) : null;
         const configVal = currentConfig ? (currentConfig.maxUrlsPerMessage ?? null) : null;
         hasChanges = inputVal !== configVal;
+      }
+
+      if (!hasChanges && initialAnnounceTargetKey !== null) {
+        hasChanges = announceTargetKey(getAnnounceTargetFromUI()) !== initialAnnounceTargetKey;
       }
 
       saveBtn.disabled = !hasChanges;
@@ -889,6 +1079,13 @@ if (!guildId) {
           }
         }
 
+        // お知らせ配信先
+        const announceTarget = getAnnounceTargetFromUI();
+        if (announceTarget && announceTarget.mode === 'channel' && !announceTarget.channelId) {
+          alert('お知らせの投稿先チャンネルを選んでください。');
+          return;
+        }
+
         // 保存ボタンを無効化
         saveBtn.setAttribute('disabled', 'true');
         saveBtn.textContent = '保存中...';
@@ -909,6 +1106,7 @@ if (!guildId) {
                 const v = parseInt(input.value, 10);
                 return Number.isFinite(v) ? v : null;
               })(),
+              announceTarget,
             }),
           });
 

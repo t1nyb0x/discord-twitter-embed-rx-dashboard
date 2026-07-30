@@ -28,6 +28,9 @@ export const guildConfigs = sqliteTable("guild_config", {
     .notNull()
     .references(() => users.id),
   maxUrlsPerMessage: integer("max_urls_per_message"),
+  // お知らせ配信先（未設定時は Bot 側がオーナーへの DM をデフォルトとする）
+  announceTargetMode: text("announce_target_mode"),
+  announceTargetChannelId: text("announce_target_channel_id"),
 });
 
 // ホワイトリスト（whitelist）

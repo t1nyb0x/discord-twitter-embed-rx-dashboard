@@ -35,6 +35,7 @@ const mockRedis = {
   exists: vi.fn(),
   get: vi.fn(),
   set: vi.fn(),
+  publish: vi.fn(),
 };
 vi.mock("@/lib/redis", () => ({
   redis: mockRedis,
@@ -142,6 +143,54 @@ describe("API: /api/guilds/[guildId]/config", () => {
 
       // ETag ヘッダーを検証
       expect(response.headers.get("ETag")).toBe('"1"');
+    });
+
+    it("お知らせ配信先が未設定の場合 announceTarget に null を返す", async () => {
+      mockFindGuildConfig.mockResolvedValue({
+        guildId: "123456789012345678",
+        allowAllChannels: true,
+        version: 1,
+        updatedAt: "2024-01-01T00:00:00.000Z",
+        announceTargetMode: null,
+        announceTargetChannelId: null,
+      });
+
+      const response = await callGET();
+      const body = await response.json();
+      expect(body.data.announceTarget).toBeNull();
+    });
+
+    it("お知らせ配信先が DM の場合 mode のみを返す", async () => {
+      mockFindGuildConfig.mockResolvedValue({
+        guildId: "123456789012345678",
+        allowAllChannels: true,
+        version: 1,
+        updatedAt: "2024-01-01T00:00:00.000Z",
+        announceTargetMode: "dm",
+        announceTargetChannelId: null,
+      });
+
+      const response = await callGET();
+      const body = await response.json();
+      expect(body.data.announceTarget).toEqual({ mode: "dm" });
+    });
+
+    it("お知らせ配信先がチャンネルの場合 channelId を含めて返す", async () => {
+      mockFindGuildConfig.mockResolvedValue({
+        guildId: "123456789012345678",
+        allowAllChannels: true,
+        version: 1,
+        updatedAt: "2024-01-01T00:00:00.000Z",
+        announceTargetMode: "channel",
+        announceTargetChannelId: "333333333333333333",
+      });
+
+      const response = await callGET();
+      const body = await response.json();
+      expect(body.data.announceTarget).toEqual({
+        mode: "channel",
+        channelId: "333333333333333333",
+      });
     });
   });
 
@@ -298,6 +347,137 @@ describe("API: /api/guilds/[guildId]/config", () => {
       expect(response.status).toBe(409);
       const body = await response.json();
       expect(body.error.code).toBe("VERSION_CONFLICT");
+    });
+  });
+
+  describe("PUT: お知らせ配信先", () => {
+    const GUILD_ID = "123456789012345678";
+
+    async function callPUT(body: Record<string, unknown>) {
+      const { PUT } = await import("@/pages/api/guilds/[guildId]/config");
+      return PUT({
+        params: { guildId: GUILD_ID },
+        locals: createMockLocals(),
+        request: new Request(`http://localhost/api/guilds/${GUILD_ID}/config`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "If-Match": '"1"' },
+          body: JSON.stringify({
+            allowAllChannels: true,
+            whitelistedChannelIds: [],
+            ...body,
+          }),
+        }),
+      } as any);
+    }
+
+    beforeEach(() => {
+      mockFindGuildConfig.mockResolvedValue({
+        guildId: GUILD_ID,
+        allowAllChannels: true,
+        version: 1,
+        updatedAt: "2024-01-01T00:00:00.000Z",
+        maxUrlsPerMessage: null,
+        announceTargetMode: null,
+        announceTargetChannelId: null,
+      });
+      mockRedis.set.mockResolvedValue("OK");
+      mockRedis.publish.mockResolvedValue(1);
+    });
+
+    it("announceTarget がオブジェクトでない場合 400 を返す", async () => {
+      const response = await callPUT({ announceTarget: "dm" });
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe("INVALID_ANNOUNCE_TARGET");
+    });
+
+    it("mode が未知の値の場合 400 を返す", async () => {
+      const response = await callPUT({ announceTarget: { mode: "webhook" } });
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe("INVALID_ANNOUNCE_TARGET");
+    });
+
+    it("mode が channel で channelId がない場合 400 を返す", async () => {
+      const response = await callPUT({ announceTarget: { mode: "channel" } });
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe("INVALID_ANNOUNCE_TARGET");
+    });
+
+    it("channelId が Snowflake 形式でない場合 400 を返す", async () => {
+      const response = await callPUT({
+        announceTarget: { mode: "channel", channelId: "not-a-snowflake" },
+      });
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe("INVALID_ANNOUNCE_TARGET");
+    });
+
+    it("mode が dm のときの channelId もフォールバック先として検証する", async () => {
+      const response = await callPUT({
+        announceTarget: { mode: "dm", channelId: "abc" },
+      });
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.code).toBe("INVALID_ANNOUNCE_TARGET");
+    });
+
+    it("announceTarget を省略した場合は未設定として保存する", async () => {
+      const response = await callPUT({});
+      expect(response.status).toBe(200);
+      expect(mockSaveGuildConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          announceTargetMode: null,
+          announceTargetChannelId: null,
+        }),
+      );
+    });
+
+    it("mode が dm の場合 channelId なしで保存する", async () => {
+      const response = await callPUT({ announceTarget: { mode: "dm" } });
+      expect(response.status).toBe(200);
+      expect(mockSaveGuildConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          announceTargetMode: "dm",
+          announceTargetChannelId: null,
+        }),
+      );
+    });
+
+    it("mode が dm でもフォールバックチャンネルを保存できる", async () => {
+      const response = await callPUT({
+        announceTarget: { mode: "dm", channelId: "333333333333333333" },
+      });
+      expect(response.status).toBe(200);
+      expect(mockSaveGuildConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          announceTargetMode: "dm",
+          announceTargetChannelId: "333333333333333333",
+        }),
+      );
+    });
+
+    it("mode が channel の場合 Redis にも announceTarget を書き込む", async () => {
+      const response = await callPUT({
+        announceTarget: { mode: "channel", channelId: "333333333333333333" },
+      });
+      expect(response.status).toBe(200);
+
+      const [key, value] = mockRedis.set.mock.calls[0];
+      expect(key).toBe(`app:guild:${GUILD_ID}:config`);
+      expect(JSON.parse(value).announceTarget).toEqual({
+        mode: "channel",
+        channelId: "333333333333333333",
+      });
+    });
+
+    it("未設定の場合 Redis の設定に announceTarget を含めない", async () => {
+      const response = await callPUT({ announceTarget: null });
+      expect(response.status).toBe(200);
+
+      const [, value] = mockRedis.set.mock.calls[0];
+      expect(JSON.parse(value)).not.toHaveProperty("announceTarget");
     });
   });
 });
