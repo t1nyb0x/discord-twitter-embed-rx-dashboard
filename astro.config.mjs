@@ -1,7 +1,8 @@
+import { fileURLToPath } from "node:url";
+
 import node from "@astrojs/node";
 import preact from "@astrojs/preact";
 import { defineConfig } from "astro/config";
-import { fileURLToPath } from "node:url";
 
 // https://astro.build/config
 export default defineConfig({

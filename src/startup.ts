@@ -77,7 +77,9 @@ function startReconcileJob(): void {
 async function writeDashboardVersion(): Promise<void> {
   const { version } = await import("../package.json");
   await redis.set(DASHBOARD_VERSION_KEY, version, "EX", DASHBOARD_VERSION_TTL_SECONDS);
-  logger.info(`Dashboard version ${version} written to Redis (TTL: ${DASHBOARD_VERSION_TTL_SECONDS}s)`);
+  logger.info(
+    `Dashboard version ${version} written to Redis (TTL: ${DASHBOARD_VERSION_TTL_SECONDS}s)`,
+  );
 }
 
 /**
@@ -94,7 +96,7 @@ function startVersionHeartbeat(): void {
     }
   }, DASHBOARD_VERSION_HEARTBEAT_INTERVAL_MS);
 
-  logger.info(`Version heartbeat started (interval: ${DASHBOARD_VERSION_HEARTBEAT_INTERVAL_MS / 1000}s)`);
+  logger.info(
+    `Version heartbeat started (interval: ${DASHBOARD_VERSION_HEARTBEAT_INTERVAL_MS / 1000}s)`,
+  );
 }
-
-

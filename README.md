@@ -63,13 +63,13 @@ cp .env.compose.example .env
 
 **オプション**
 
-| 変数名                         | デフォルト値               | 説明                                           |
-| ------------------------------ | -------------------------- | ---------------------------------------------- |
-| `DATABASE_URL`                 | `file:./data/dashboard.db` | SQLite データベースパス                        |
-| `REDIS_URL`                    | `redis://redis:6379`       | Redis 接続 URL（Compose 環境では上書きされる） |
+| 変数名                         | デフォルト値               | 説明                                                                    |
+| ------------------------------ | -------------------------- | ----------------------------------------------------------------------- |
+| `DATABASE_URL`                 | `file:./data/dashboard.db` | SQLite データベースパス                                                 |
+| `REDIS_URL`                    | `redis://redis:6379`       | Redis 接続 URL（Compose 環境では上書きされる）                          |
 | `OWNER_DISCORD_ID`             | （未設定）                 | Bot の持ち主の Discord ユーザーID。設定するとお知らせ作成ページが使える |
-| `ORPHAN_CONFIG_RETENTION_DAYS` | `30`                       | 孤立設定の保持日数                             |
-| `AUDIT_LOG_RETENTION_DAYS`     | `90`                       | 監査ログの保持日数                             |
+| `ORPHAN_CONFIG_RETENTION_DAYS` | `30`                       | 孤立設定の保持日数                                                      |
+| `AUDIT_LOG_RETENTION_DAYS`     | `90`                       | 監査ログの保持日数                                                      |
 
 #### Compose 変数一覧（`.env`）
 
@@ -100,7 +100,8 @@ http://localhost:4321 でアクセスできます。
 | `npm run dev`           | 開発サーバー起動             |
 | `npm run build`         | 型チェック + 本番ビルド      |
 | `npm run preview`       | ビルド成果物のプレビュー     |
-| `npm run test`          | テスト実行（Vitest）         |
+| `npm run test`          | ユニットテスト実行（Vitest） |
+| `npm run test:e2e`      | E2E テスト実行               |
 | `npm run test:watch`    | テスト監視モード             |
 | `npm run test:coverage` | カバレッジ付きテスト実行     |
 | `npm run lint`          | Lint 実行（oxlint）          |
@@ -110,6 +111,29 @@ http://localhost:4321 でアクセスできます。
 | `npm run db:generate`   | Drizzle マイグレーション生成 |
 | `npm run db:migrate`    | マイグレーション適用         |
 | `npm run db:studio`     | Drizzle Studio 起動          |
+
+## テスト
+
+ユニットテスト（`tests/unit/`）は Redis も SQLite もモックするため、単体で完結します。
+
+```bash
+npm run test
+```
+
+E2E テスト（`tests/e2e/`）は**起動済みの Dashboard に HTTP で叩く**ため、Redis と Dashboard が動いている必要があります。設定は `vitest.e2e.config.ts` で分離しており、`npm run test` では実行されません。
+
+```bash
+# Redis と Dashboard を起動したうえで
+npm run test:e2e
+```
+
+| 環境変数        | 説明                   | デフォルト              |
+| --------------- | ---------------------- | ----------------------- |
+| `DASHBOARD_URL` | Dashboard のベース URL | `http://localhost:4321` |
+
+Dashboard に到達できない場合、テストは skip されず**失敗します**。「起動していないのに緑になる」状態を避けるためです。
+
+CI では `e2e` ジョブが Redis サービスコンテナとダミーの OAuth 設定で Dashboard を起動して実行します。実際の Discord 認証情報は不要です（ログイン API は OAuth URL を組み立てるだけで Discord へは到達しないため）。
 
 ## Docker での実行
 

@@ -1,11 +1,14 @@
 import path from "path";
 
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    // E2E は起動済みの Dashboard を要求するため、こちらでは実行しない。
+    // 実行は vitest.e2e.config.ts（npm run test:e2e）が担う。
+    exclude: [...configDefaults.exclude, "tests/e2e/**"],
     env: {
       NODE_ENV: "test",
       // crypto.ts の起動時チェックを通すための最低限の環境変数
