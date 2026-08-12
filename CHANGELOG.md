@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.5.0](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.3...dashboard-v1.5.0) (2026-07-30)
+
+
+### Features
+
+* **announcements:** オーナー限定のお知らせ送信APIを追加 ([d900d80](https://github.com/rx-twitter/rx-twitter-dashboard/commit/d900d8081a92822da309919764526df9fe478322)), closes [#116](https://github.com/rx-twitter/rx-twitter-dashboard/issues/116)
+* **config:** お知らせ配信先をギルド設定に追加 ([7fb5699](https://github.com/rx-twitter/rx-twitter-dashboard/commit/7fb5699843b9bb8664c44df459cd1ee76e0e42e9)), closes [#116](https://github.com/rx-twitter/rx-twitter-dashboard/issues/116)
+* **dashboard:** お知らせ作成ページを追加 ([e084dc0](https://github.com/rx-twitter/rx-twitter-dashboard/commit/e084dc08512e4bb2422e59c9d69b1a0b0e48c8fa)), closes [#116](https://github.com/rx-twitter/rx-twitter-dashboard/issues/116)
+* **dashboard:** お知らせ配信先の選択UIを追加 ([62a91d0](https://github.com/rx-twitter/rx-twitter-dashboard/commit/62a91d09611e270576453dba3b8355c9f70920ee)), closes [#116](https://github.com/rx-twitter/rx-twitter-dashboard/issues/116)
+* オーナー専用のお知らせ作成・送信ページを追加 ([99edc14](https://github.com/rx-twitter/rx-twitter-dashboard/commit/99edc14147832477f1737e608afdcd809caf42ea))
+* お知らせ配信先のサーバー設定UIを追加 ([3caf438](https://github.com/rx-twitter/rx-twitter-dashboard/commit/3caf438631c5c77672def988d40241c4e22db2c9))
+
+
+### Bug Fixes
+
+* **dashboard:** 変更履歴にお知らせ配信先の変更を表示する ([33dfe38](https://github.com/rx-twitter/rx-twitter-dashboard/commit/33dfe38640a2ad8fa199a7935852d61ec55d22c1)), closes [#116](https://github.com/rx-twitter/rx-twitter-dashboard/issues/116)
+* Redis反映失敗後に設定が復旧しない問題を修正 ([a437c01](https://github.com/rx-twitter/rx-twitter-dashboard/commit/a437c01f0c697bc252eb898b789b4ab39142260f))
+* **reseed:** Redis反映失敗後に設定が復旧しない問題を修正 ([dfc20c0](https://github.com/rx-twitter/rx-twitter-dashboard/commit/dfc20c0dd3eeacf065232ffb4ca2389baacd2e26)), closes [#120](https://github.com/rx-twitter/rx-twitter-dashboard/issues/120) [#118](https://github.com/rx-twitter/rx-twitter-dashboard/issues/118)
+
+## [1.4.3](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.2...dashboard-v1.4.3) (2026-07-23)
+
+
+### Bug Fixes
+
+* リバースプロキシ越しのログアウト403を実行時Originチェックで解消 ([253a4f7](https://github.com/rx-twitter/rx-twitter-dashboard/commit/253a4f7b92dc0ee3b9dae71dd607fd3dacbf88a1)), closes [#103](https://github.com/rx-twitter/rx-twitter-dashboard/issues/103)
+* リバースプロキシ越しのログアウト403を実行時Originチェックで解消 ([#103](https://github.com/rx-twitter/rx-twitter-dashboard/issues/103)) ([3e49050](https://github.com/rx-twitter/rx-twitter-dashboard/commit/3e4905079cc57fd7bb4a5ffc486acd906ca9c64a))
+
 ## [1.4.2](https://github.com/rx-twitter/rx-twitter-dashboard/compare/dashboard-v1.4.1...dashboard-v1.4.2) (2026-07-23)
 
 
