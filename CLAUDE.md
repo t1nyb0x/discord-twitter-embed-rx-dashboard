@@ -11,9 +11,10 @@ npm run build        # Type-check (astro:check) + production build
 npm run preview      # Preview built artifacts
 
 # Testing
-npm run test         # Run all Vitest tests (single run)
+npm run test         # Run unit tests (single run); tests/e2e/ is excluded
 npm run test:watch   # Watch mode
 npm run test:coverage  # Coverage report (v8)
+npm run test:e2e     # E2E against a running Dashboard (vitest.e2e.config.ts)
 
 # Linting & Formatting
 npm run lint         # oxlint on src/
@@ -72,6 +73,7 @@ Run a single test file: `npx vitest run tests/unit/lib/auth.test.ts`
 - **Logging**: `createLogger("ModuleName")` from `src/lib/logger.ts` (Winston)
 - **TypeScript**: strict mode; `App.Locals` types defined in `src/env.d.ts`
 - **Tests**: unit tests in `tests/unit/`, mock helpers in `tests/helpers.ts` for User/Session objects; Redis and DB are mocked
+- **E2E**: `tests/e2e/` hits a running Dashboard over HTTP — no mocks, no `src` imports. Split out via `vitest.e2e.config.ts` so `npm run test` never runs it. Unreachable Dashboard fails the suite rather than skipping it. CI runs it in the `e2e` job with a Redis service and dummy OAuth values; `DASHBOARD_URL` overrides the target (default `http://localhost:4321`)
 
 ## Environment Variables
 
